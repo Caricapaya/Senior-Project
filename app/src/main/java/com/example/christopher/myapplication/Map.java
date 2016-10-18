@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -19,6 +20,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.TextView;
 import android.view.View;
 import android.view.View.OnLongClickListener;
@@ -36,13 +38,22 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener;
+import com.google.android.gms.maps.model.PolylineOptions;
 
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.sql.Connection;
+import java.util.ArrayList;
 import java.util.Random;
+import java.util.HashMap;
+import java.util.List;
 
 
 public class Map extends AppCompatActivity implements LocationListener, OnMapReadyCallback, OnClickListener, OnLongClickListener, OnMarkerClickListener{
@@ -97,23 +108,29 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
 
     @Override
     public void onMapReady(GoogleMap map) {
-        myMap = map;
-        myMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
-        myMap.setMyLocationEnabled(true);
-        myMap.setIndoorEnabled(true);
-        myMap.getUiSettings().setZoomControlsEnabled(true);
-        myMap.getUiSettings().setMapToolbarEnabled(false);
-        myMap.setOnMarkerClickListener(this);
+        try{
+            myMap = map;
+            myMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+            myMap.setMyLocationEnabled(true);
+            myMap.setIndoorEnabled(true);
+            myMap.getUiSettings().setZoomControlsEnabled(true);
+            myMap.getUiSettings().setMapToolbarEnabled(false);
+            myMap.setOnMarkerClickListener(this);
 
-        LocationManager locManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        Criteria criteria = new Criteria();
-        String bestProvider = locManager.getBestProvider(criteria, true);
-        Location location = locManager.getLastKnownLocation(bestProvider);
+            LocationManager locManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+            Criteria criteria = new Criteria();
+            String bestProvider = locManager.getBestProvider(criteria, true);
+            Location location = locManager.getLastKnownLocation(bestProvider);
 
-        if (location != null){
-            onLocationChanged(location);
+            if (location != null){
+                onLocationChanged(location);
+            }
+            locManager.requestLocationUpdates(bestProvider, 10000, 0, this);
         }
-        locManager.requestLocationUpdates(bestProvider, 10000, 0, this);
+        catch (SecurityException e){
+            Log.d("Permission error", e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     public void setUpMap(){
@@ -179,19 +196,112 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
         return false;
     }
 
+
+
+    private class PathGetter extends AsyncTask<String, Integer, String>{
+        @Override
+        protected String doInBackground(String... params) {
+            String pathsData = "";
+            try {
+                pathsData = downloadFromURL(params[0]);
+            }
+            catch (Exception e){
+                Log.d("Error in PathGetter", e.getMessage());
+                e.printStackTrace();
+            }
+            return pathsData;
+        }
+
+        private String downloadFromURL(String myurl) throws IOException{
+            String retData = "";
+            BufferedReader inputBuffer;
+            HttpURLConnection connection = null;
+            try{
+                connection = (HttpURLConnection) new URL(myurl).openConnection();
+                connection.connect();
+                inputBuffer = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                StringBuilder mysb = new StringBuilder();
+                String line = "";
+                while ((line = inputBuffer.readLine()) != null){
+                    mysb.append(line);
+                }
+                retData = mysb.toString();
+                inputBuffer.close();
+            }
+            catch (Exception e){
+                Log.d("downloadFromURL error ", e.getMessage());
+                e.printStackTrace();
+            }
+            finally {
+                connection.getInputStream().close();
+                connection.disconnect();
+            }
+
+            return retData;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            PathDecoder pathDecoder = new PathDecoder();
+            pathDecoder.execute(s);
+        }
+    }
+
+    private class PathDecoder extends AsyncTask<String, Integer, List<List<HashMap<String,String>>>>{
+        @Override
+        protected List<List<HashMap<String, String>>> doInBackground(String... params) {
+            JSONObject jsonObject;
+            List<List<HashMap<String, String>>> paths = null;
+            try{
+                jsonObject = new JSONObject(params[0]);
+                DirectionsJSONParser parser = new DirectionsJSONParser();
+                paths = parser.parse(jsonObject);
+            }
+            catch(Exception e){
+                Log.d("Error in PathDecoder", e.getMessage());
+                e.printStackTrace();
+            }
+            return paths;
+        }
+
+        @Override
+        protected void onPostExecute(List<List<HashMap<String, String>>> lists) {
+            ArrayList<LatLng> points = null;
+            PolylineOptions polylineOptions = null;
+
+            for (int i = 0; i < lists.size(); i++) {
+                points = new ArrayList<LatLng>();
+                polylineOptions = new PolylineOptions();
+
+                List<HashMap<String, String>> path = lists.get(i);
+                for (int j = 0; j < path.size(); j++) {
+                    HashMap<String, String> point = path.get(j);
+                    double lat = Double.parseDouble(point.get("lat"));
+                    double lng = Double.parseDouble(point.get("lng"));
+                    LatLng position = new LatLng(lat, lng);
+                    points.add(position);
+                }
+                polylineOptions.addAll(points);
+                polylineOptions.width(2);
+                polylineOptions.color(Color.CYAN);
+                myMap.addPolyline(polylineOptions);
+            }
+        }
+    }
+
     private class MarkerWrapper{
         Marker oldMarker;
         Bitmap fetchedImage;
-        public MarkerWrapper(Marker re, Bitmap bm){
+        MarkerWrapper(Marker re, Bitmap bm){
             oldMarker = re;
             fetchedImage = bm;
         }
 
-        public Marker getOldMarker() {
+        Marker getOldMarker() {
             return oldMarker;
         }
 
-        public Bitmap getFetchedImage() {
+        Bitmap getFetchedImage() {
             return fetchedImage;
         }
     }
