@@ -13,6 +13,9 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.os.PersistableBundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -38,6 +41,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener;
+import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
 import org.json.JSONObject;
@@ -61,15 +65,22 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
     LatLng lastLocation;
     Marker lastLocationMarker;
     Marker destinationMarker;
+    List<Marker> otherMarkers;
+    Polyline destinationRoute;
 
     boolean firstMapUpdate;
+
+    NetworkIO networkThread;
+    Handler UIHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         lastLocationMarker = null;
         destinationMarker = null;
+        destinationRoute = null;
         firstMapUpdate = true;
+        otherMarkers = new ArrayList<>();
 
         if (ConnectionResult.SUCCESS != GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this)){
             GoogleApiAvailability.getInstance().getErrorDialog(this, GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this), 0).show();
@@ -81,6 +92,7 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
         txtView.setOnClickListener(this);
         txtView.setOnLongClickListener(this);
 
+        initializeIOThread();
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, 1);
@@ -88,6 +100,8 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
         else{
             setUpMap();
         }
+
+
     }
 
     @Override
@@ -171,6 +185,16 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
             firstMapUpdate = false;
         }
         localeTV.setText("Longitude: " + longitude + "\nLatitude: " + latitude);
+
+        Message sendLocation = Message.obtain();
+        sendLocation.what = NetworkIO.Type.SEND_LOCATION.ordinal();
+        sendLocation.obj = lastLocation;
+        networkThread.IOHandler.sendMessage(sendLocation);
+
+        Message updateMarkers = Message.obtain();
+        updateMarkers.what = NetworkIO.Type.GET_LOCATIONS.ordinal();
+        networkThread.IOHandler.sendMessage(updateMarkers);
+
     }
 
     @Override
@@ -179,21 +203,57 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
     }
 
     @Override
-    public boolean onMarkerClick(Marker marker) {
+    public boolean onMarkerClick(final Marker marker) {
+        final Context context = this;
         if (marker.equals(destinationMarker)){
-            try {
-                ImageGetter dlManager = new ImageGetter();
-                dlManager.execute("http://people.aero.und.edu/~csantana/260/1/12041326_10153226440607635_1791570777_o.jpg", destinationMarker);
-            } catch (Exception e) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Can't download and/or show image");
-                builder.setTitle("Error!");
-                builder.create().show();
-                e.printStackTrace();
-            }
+            AlertDialog.Builder optionDialog = new AlertDialog.Builder(this);
+            optionDialog.setTitle("Options!");
+            optionDialog.setMessage("Change this marker's icon, or draw a route here");
+
+            optionDialog.setNegativeButton("Change Icon", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    try {
+                        ImageGetter dlManager = new ImageGetter();
+                        dlManager.execute("http://people.aero.und.edu/~csantana/260/1/12041326_10153226440607635_1791570777_o.jpg", destinationMarker);
+                    } catch (Exception e) {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                        builder.setMessage("Can't download and/or show image");
+                        builder.setTitle("Error!");
+                        builder.create().show();
+                        e.printStackTrace();
+                    }
+                }
+            });
+            optionDialog.setPositiveButton("Get Route", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    try {
+                        PathGetter pathGetter = new PathGetter();
+                        String requestURL = buildRequestURL(lastLocationMarker.getPosition(), marker.getPosition());
+                        pathGetter.execute(requestURL);
+                    } catch (Exception e) {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                        builder.setMessage("Can't download and/or draw path");
+                        builder.setTitle("Error!");
+                        builder.create().show();
+                        e.printStackTrace();
+                    }
+                }
+            });
+
+            optionDialog.show();
             return true;
         }
         return false;
+    }
+
+    private String buildRequestURL(LatLng start, LatLng dest){
+        String origin = "origin=" + start.latitude + "," + start.longitude;
+        String destination = "destination=" + dest.latitude + "," + dest.longitude;
+        String sensor = "sensor=false";
+        String parameters = origin + "&" + destination + "&" + sensor;
+        return "https://maps.googleapis.com/maps/api/directions/json?" + parameters;
     }
 
 
@@ -282,9 +342,9 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
                     points.add(position);
                 }
                 polylineOptions.addAll(points);
-                polylineOptions.width(2);
-                polylineOptions.color(Color.CYAN);
-                myMap.addPolyline(polylineOptions);
+                polylineOptions.width(5);
+                polylineOptions.color(Color.BLUE);
+                destinationRoute = myMap.addPolyline(polylineOptions);
             }
         }
     }
@@ -344,6 +404,10 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
                 if (destinationMarker != null){
                     destinationMarker.remove();
                 }
+                if (destinationRoute != null){
+                    destinationRoute.remove();
+                    destinationRoute = null;
+                }
                 Random rand = new Random();
                 double longitude = lastLocation.longitude + (rand.nextDouble() / 50.0) - 0.01;
                 double latitude = lastLocation.latitude + (rand.nextDouble() / 50.0) - 0.01;
@@ -360,7 +424,7 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
     public void onClick(View view){
         switch (view.getId()) {
             case R.id.locationLabel: {
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                /*AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setMessage("No Functionality");
                 builder.setTitle("Error?");
                 builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -369,8 +433,62 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
 
                     }
                 });
-                builder.create().show();
+                builder.create().show();*/
+                Message myMsg = Message.obtain();
+                myMsg.what = NetworkIO.Type.SEND_LOCATION.ordinal();
+                myMsg.obj = lastLocation;
+                networkThread.IOHandler.sendMessage(myMsg);
             }
         }
     }
+
+    public void initializeIOThread(){
+        UIHandler = new Handler(Looper.getMainLooper()){
+            @Override
+            public void handleMessage(Message msg) {
+                //super.handleMessage(msg);
+                NetworkIO.Type type = NetworkIO.Type.values()[msg.what];
+                TextView txtView = (TextView) findViewById(R.id.locationLabel);
+                switch (type){
+                    case STRING_RESPONSE:
+                        txtView.setText((String) msg.obj);
+                        break;
+                    case CONNECTION_STATUS:
+                        txtView.setText((String) msg.obj);
+                        break;
+                    case SEND_LOCATION:
+                        txtView.setText((String) msg.obj);
+                        break;
+                    case DISCONNECT:
+                        txtView.setText((String) msg.obj);
+                        break;
+                    case GET_LOCATIONS:
+                        updateLocations((String) msg.obj);
+                }
+            }
+        };
+
+        networkThread = new NetworkIO( UIHandler);
+        networkThread.start();
+    }
+
+    private void updateLocations(String unparsed){
+        for (Marker m : otherMarkers){
+            m.remove();
+        }
+        for (String locationHash : unparsed.split("&")){
+            if (locationHash.equals("NULL")){
+                break;
+            }
+            String deviceID = locationHash.split(":")[0];
+            Double latitude = Double.parseDouble(locationHash.split(":")[1].split(",")[0]);
+            Double longitude = Double.parseDouble(locationHash.split(":")[1].split(",")[1]);
+            MarkerOptions markerOptions = new MarkerOptions();
+            markerOptions.title(deviceID);
+            markerOptions.position(new LatLng(latitude, longitude));
+            otherMarkers.add(myMap.addMarker(markerOptions));
+        }
+    }
+
+
 }

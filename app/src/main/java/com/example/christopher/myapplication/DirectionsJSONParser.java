@@ -1,5 +1,7 @@
 package com.example.christopher.myapplication;
 
+import android.util.Log;
+
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,6 +27,8 @@ class DirectionsJSONParser {
 
         try{
             jPaths = jData.getJSONArray("routes");
+            Log.d("TEST",jData.toString(4));
+            Log.d("TEST", "HELLO3");
 
             for (int i = 0; i < jPaths.length(); i++) {
                 jLegs = ((JSONObject) jPaths.get(i)).getJSONArray("legs");
@@ -35,7 +39,7 @@ class DirectionsJSONParser {
 
                     for (int k = 0; k < jSteps.length(); k++) {
                         String polyLine;
-                        polyLine = (String) ((JSONObject)((JSONObject) jSteps.get(k)).get("polyline")).get("points");
+                        polyLine = (String) ((JSONObject) ((JSONObject) jSteps.get(k)).get("polyline")).get("points");
                         List<LatLng> pointList = decodePoly(polyLine);
 
                         for (int l = 0; l < pointList.size(); l++) {
@@ -45,10 +49,9 @@ class DirectionsJSONParser {
                             path.add(temp);
                         }
                     }
-
-                    parsedPaths.add(path); // Try moving to nearest outer for loop
-
                 }
+
+                parsedPaths.add(path);
             }
         }
         catch(Exception e){
