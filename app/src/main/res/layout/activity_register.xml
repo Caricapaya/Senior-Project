@@ -59,8 +59,7 @@
         android:layout_below="@+id/passwordInputConfirm"
         android:layout_toEndOf="@+id/textGender"
         android:layout_marginTop="5dp"
-        android:orientation="horizontal"
-        android:id="@+id/genderGroup">
+        android:orientation="horizontal">
 
         <RadioButton
             android:text="Male"
@@ -100,8 +99,7 @@
         android:layout_below="@+id/textGender"
         android:layout_toEndOf="@+id/textGender"
         android:layout_marginTop="5dp"
-        android:orientation="horizontal"
-        android:id="@+id/occupationGroup">
+        android:orientation="horizontal">
 
         <RadioButton
             android:text="Professor"
