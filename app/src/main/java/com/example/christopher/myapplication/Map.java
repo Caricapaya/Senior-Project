@@ -1,17 +1,15 @@
 package com.example.christopher.myapplication;
 
-import android.*;
 import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.location.Criteria;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
@@ -44,23 +42,27 @@ import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.net.URL;
-import java.net.URLConnection;
-import java.sql.Connection;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.HashMap;
 import java.util.List;
 
 
-public class Map extends AppCompatActivity implements LocationListener, OnMapReadyCallback, OnClickListener, OnLongClickListener, OnMarkerClickListener{
+public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClickListener, OnLongClickListener, OnMarkerClickListener{
     GoogleMap myMap;
     LatLng lastLocation;
     Marker lastLocationMarker;
@@ -86,6 +88,9 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
             GoogleApiAvailability.getInstance().getErrorDialog(this, GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this), 0).show();
             finish();
         }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+        }
         setContentView( R.layout.activity_map );
 
         TextView txtView = (TextView) findViewById(R.id.locationLabel);
@@ -94,13 +99,14 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
 
         initializeIOThread();
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-        }
-        else{
-            setUpMap();
-        }
+        IntentFilter filter = new IntentFilter(SendLocationService.BROADCAST_ACTION);
+        LocationReceiver receiver = new LocationReceiver();
+        registerReceiver(receiver, filter);
 
+        startService(new Intent(this, SendLocationService.class));
+        initializeLocationGetter();
+
+        setUpMap();
 
     }
 
@@ -131,7 +137,7 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
             myMap.getUiSettings().setMapToolbarEnabled(false);
             myMap.setOnMarkerClickListener(this);
 
-            LocationManager locManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+            /*LocationManager locManager = (LocationManager) getSystemService(LOCATION_SERVICE);
             Criteria criteria = new Criteria();
             String bestProvider = locManager.getBestProvider(criteria, true);
             Location location = locManager.getLastKnownLocation(bestProvider);
@@ -139,7 +145,7 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
             if (location != null){
                 onLocationChanged(location);
             }
-            locManager.requestLocationUpdates(bestProvider, 10000, 0, this);
+            locManager.requestLocationUpdates(bestProvider, 10000, 0, this);*/
         }
         catch (SecurityException e){
             Log.d("Permission error", e.getMessage());
@@ -157,49 +163,28 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
         super.onCreate(savedInstanceState, persistentState);
     }
 
-    @Override
-    public void onProviderEnabled(String provider) {
+    private class LocationReceiver extends BroadcastReceiver{
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (myMap == null){
+                return;
+            }
+            if (lastLocationMarker != null) {
+                lastLocationMarker.remove();
+            }
+            TextView localeTV = (TextView) findViewById(R.id.locationLabel);
+            double longitude = intent.getDoubleExtra("longitude", 0);
+            double latitude = intent.getDoubleExtra("latitude", 0);
+            LatLng coordinates = lastLocation = new LatLng(latitude, longitude);
+            MarkerOptions myMarker = new MarkerOptions().position(coordinates).title("We're Here!").snippet("IDK what this snippet is");
+            lastLocationMarker = myMap.addMarker(myMarker);
 
-    }
-
-    @Override
-    public void onProviderDisabled(String provider) {
-
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        if (lastLocationMarker != null) {
-            lastLocationMarker.remove();
+            if (firstMapUpdate){
+                myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(coordinates, 15));
+                myMap.animateCamera(CameraUpdateFactory.zoomTo(17), 2000, null);
+                firstMapUpdate = false;
+            }
         }
-        TextView localeTV = (TextView) findViewById(R.id.locationLabel);
-        double longitude = location.getLongitude();
-        double latitude = location.getLatitude();
-        LatLng coordinates = lastLocation = new LatLng(latitude, longitude);
-        MarkerOptions myMarker = new MarkerOptions().position(coordinates).title("We're Here!").snippet("IDK what this snippet is");
-        lastLocationMarker = myMap.addMarker(myMarker);
-
-        if (firstMapUpdate){
-            myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(coordinates, 15));
-            myMap.animateCamera(CameraUpdateFactory.zoomTo(17), 2000, null);
-            firstMapUpdate = false;
-        }
-        localeTV.setText("Longitude: " + longitude + "\nLatitude: " + latitude);
-
-        Message sendLocation = Message.obtain();
-        sendLocation.what = NetworkIO.Type.SEND_LOCATION.ordinal();
-        sendLocation.obj = lastLocation;
-        networkThread.IOHandler.sendMessage(sendLocation);
-
-        Message updateMarkers = Message.obtain();
-        updateMarkers.what = NetworkIO.Type.GET_LOCATIONS.ordinal();
-        networkThread.IOHandler.sendMessage(updateMarkers);
-
-    }
-
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-
     }
 
     @Override
@@ -314,8 +299,8 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
             List<List<HashMap<String, String>>> paths = null;
             try{
                 jsonObject = new JSONObject(params[0]);
-                DirectionsJSONParser parser = new DirectionsJSONParser();
-                paths = parser.parse(jsonObject);
+                JSONParser parser = new JSONParser();
+                paths = parser.parsePaths(jsonObject);
             }
             catch(Exception e){
                 Log.d("Error in PathDecoder", e.getMessage());
@@ -489,6 +474,75 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
             otherMarkers.add(myMap.addMarker(markerOptions));
         }
     }
+
+    public void initializeLocationGetter(){
+        final Handler handler = new Handler();
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                try{
+                    GetLocationsTask getLocationsTask = new GetLocationsTask();
+                    getLocationsTask.execute("");
+                }
+                finally {
+                    handler.postDelayed(this, 5000);
+                }
+            }
+        };
+        handler.postDelayed(runnable, 5000);
+
+    }
+
+    private class GetLocationsTask extends AsyncTask<String, Integer, List<Person>>{
+        @Override
+        protected List<Person> doInBackground(String... params) {
+            Socket mySocket;
+            List<Person> people = null;
+            try{
+                InetAddress address = InetAddress.getByName("csclserver.hopto.org");
+                mySocket = new Socket(address, 50001);
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+                PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("type", "GET_LOCATIONS");
+                printWriter.println(jsonMessage);
+                String unparsed = bufferedReader.readLine();
+                mySocket.close();
+
+                JSONParser parser = new JSONParser();
+                people = parser.parseLocations(new JSONObject(unparsed));
+            }
+            catch (JSONException e){
+                e.printStackTrace();
+            }
+            catch (UnknownHostException e){
+                e.printStackTrace();
+            }
+            catch (IOException e){
+                e.printStackTrace();
+            }
+            finally {
+                return people;
+            }
+        };
+
+        @Override
+        protected void onPostExecute(List<Person> persons) {
+            for (Marker m : otherMarkers){
+                m.remove();
+            }
+            for (Person person : persons){
+                String deviceID = person.getDeviceID();
+                String name = person.getName();
+                MarkerOptions markerOptions = new MarkerOptions();
+                markerOptions.title(name);
+                markerOptions.snippet("Device ID: " + deviceID);
+                markerOptions.position(person.getLocation());
+                otherMarkers.add(myMap.addMarker(markerOptions));
+            }
+        }
+    }
+
 
 
 }

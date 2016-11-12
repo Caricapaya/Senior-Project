@@ -9,6 +9,7 @@ import java.util.HashMap;
 import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -18,8 +19,8 @@ import org.json.JSONObject;
  * //http://stackoverflow.com/questions/14710744/how-to-draw-road-directions-between-two-geocodes-in-android-google-map-v2
  */
 
-class DirectionsJSONParser {
-    List<List<HashMap<String, String>>> parse(JSONObject jData ){
+class JSONParser {
+    List<List<HashMap<String, String>>> parsePaths(JSONObject jData ){
         List<List<HashMap<String, String>>> parsedPaths = new ArrayList<>();
         JSONArray jPaths;
         JSONArray jLegs;
@@ -96,6 +97,31 @@ class DirectionsJSONParser {
             polyline.add(point);
         }
         return polyline;
+    }
+
+    List<Person> parseLocations(JSONObject jdata){
+        ArrayList<Person> parsedPeople = null;
+        try{
+            JSONArray people = jdata.getJSONArray("people");
+            parsedPeople = new ArrayList<>();
+            JSONObject person;
+            LatLng location;
+            String name;
+            String deviceID;
+            for (int i = 0; i < people.length(); i++) {
+                person = (JSONObject) people.get(i);
+                name = person.getString("name");
+                location = new LatLng(person.getJSONObject("location").getDouble("latitude"), person.getJSONObject("location").getDouble("longitude"));
+                deviceID = person.getString("deviceID");
+                parsedPeople.add(new Person(name, location, deviceID));
+            }
+        }
+        catch (JSONException e){
+            e.printStackTrace();
+        }
+        finally {
+            return parsedPeople;
+        }
     }
 
 
