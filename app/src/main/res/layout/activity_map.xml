@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" -->
+<android.support.v4.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/activity_map"
     android:layout_width="match_parent"
@@ -30,5 +31,23 @@
         android:layout_alignParentStart="true"
         android:layout_above="@+id/locationLabel"/>
 
+    <!-- sliding -->
+    <ListView
+        android:id="@+id/lv_activity_main_nav_list"
+        android:layout_width="240dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="#EDEDED"
+        android:choiceMode="singleChoice"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="0dp" />
 
-</RelativeLayout>
+    <FrameLayout
+        android:id="@+id/fl_activity_main_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" >
+    </FrameLayout>
+    <!-- sliding end-->
+
+<!-- </RelativeLayout> -->
+</android.support.v4.widget.DrawerLayout>
