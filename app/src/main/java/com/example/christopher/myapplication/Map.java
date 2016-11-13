@@ -97,7 +97,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         txtView.setOnClickListener(this);
         txtView.setOnLongClickListener(this);
 
-        initializeIOThread();
+        //initializeIOThread();
 
         IntentFilter filter = new IntentFilter(SendLocationService.BROADCAST_ACTION);
         LocationReceiver receiver = new LocationReceiver();
@@ -172,7 +172,6 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             if (lastLocationMarker != null) {
                 lastLocationMarker.remove();
             }
-            TextView localeTV = (TextView) findViewById(R.id.locationLabel);
             double longitude = intent.getDoubleExtra("longitude", 0);
             double latitude = intent.getDoubleExtra("latitude", 0);
             LatLng coordinates = lastLocation = new LatLng(latitude, longitude);
@@ -424,54 +423,6 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 myMsg.obj = lastLocation;
                 networkThread.IOHandler.sendMessage(myMsg);
             }
-        }
-    }
-
-    public void initializeIOThread(){
-        UIHandler = new Handler(Looper.getMainLooper()){
-            @Override
-            public void handleMessage(Message msg) {
-                //super.handleMessage(msg);
-                NetworkIO.Type type = NetworkIO.Type.values()[msg.what];
-                TextView txtView = (TextView) findViewById(R.id.locationLabel);
-                switch (type){
-                    case STRING_RESPONSE:
-                        txtView.setText((String) msg.obj);
-                        break;
-                    case CONNECTION_STATUS:
-                        txtView.setText((String) msg.obj);
-                        break;
-                    case SEND_LOCATION:
-                        txtView.setText((String) msg.obj);
-                        break;
-                    case DISCONNECT:
-                        txtView.setText((String) msg.obj);
-                        break;
-                    case GET_LOCATIONS:
-                        updateLocations((String) msg.obj);
-                }
-            }
-        };
-
-        networkThread = new NetworkIO( UIHandler);
-        networkThread.start();
-    }
-
-    private void updateLocations(String unparsed){
-        for (Marker m : otherMarkers){
-            m.remove();
-        }
-        for (String locationHash : unparsed.split("&")){
-            if (locationHash.equals("NULL")){
-                break;
-            }
-            String deviceID = locationHash.split(":")[0];
-            Double latitude = Double.parseDouble(locationHash.split(":")[1].split(",")[0]);
-            Double longitude = Double.parseDouble(locationHash.split(":")[1].split(",")[1]);
-            MarkerOptions markerOptions = new MarkerOptions();
-            markerOptions.title(deviceID);
-            markerOptions.position(new LatLng(latitude, longitude));
-            otherMarkers.add(myMap.addMarker(markerOptions));
         }
     }
 
