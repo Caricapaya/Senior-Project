@@ -1,11 +1,13 @@
 package com.example.christopher.myapplication;
 
 import android.content.Context;
+import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
 // 액티비티간 이동
 import android.content.Intent;
+import android.util.Log;
 import android.view.View;
 
 // autoLogin 에 쓰이는 것들
@@ -15,6 +17,18 @@ import android.widget.Toast;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
 
 
 public class Login extends AppCompatActivity {
@@ -174,8 +188,84 @@ public class Login extends AppCompatActivity {
     */
 
     public void onClick_login (View v){
-        Intent intent_toMap = new Intent(getApplicationContext(), Map.class);
-        startActivity(intent_toMap);
+        loginTask login = new loginTask();
+        login.execute(input_ID.getText().toString(), input_PW.getText().toString());
+
+        //Intent intent_toMap = new Intent(getApplicationContext(), Map.class);
+        //startActivity(intent_toMap);
+    }
+
+    private class loginTask extends AsyncTask<String, Integer, JSONObject>{
+        Boolean cannotConnect = false;
+        Boolean jsonError = false;
+        @Override
+        protected JSONObject doInBackground(String... params) {
+            String user = params[0];
+            String pass = params[1];
+            JSONObject response = null;
+            try{
+                InetAddress address = java.net.InetAddress.getByName("csclserver.hopto.org");
+                Socket mySocket = new Socket();
+                mySocket.setSoTimeout(500);
+                mySocket.connect(new InetSocketAddress(address, 50001), 500);
+                PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("type", NetworkConstants.TYPE_LOGIN);
+                jsonMessage.put("username", user);
+                jsonMessage.put("password", pass);
+                printWriter.println(jsonMessage.toString());
+                String serverResponse = bufferedReader.readLine();
+                response = new JSONObject(serverResponse);
+                mySocket.close();
+            }
+            catch (UnknownHostException e){
+                e.printStackTrace();
+                cannotConnect = true;
+            }
+            catch (IOException e){
+                e.printStackTrace();
+                cannotConnect = true;
+            }
+            catch (JSONException e){
+                e.printStackTrace();
+                jsonError = true;
+            }
+            finally {
+                return response;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(JSONObject jsonObject) {
+            if (cannotConnect){
+                Toast.makeText(getApplicationContext(), "Cannot connect to server", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (jsonError){
+                Toast.makeText(getApplicationContext(), "Unexpected error", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            try{
+                if (!jsonObject.getString("type").equals(NetworkConstants.TYPE_LOGIN)){ //Server will send a jsonobject with type = DEFAULT if request can't be handled
+                    Toast.makeText(getApplicationContext(), "An error has occurred", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (!jsonObject.getBoolean("loginSuccessful")){
+                    Toast.makeText(getApplicationContext(), "username or password is incorrect", Toast.LENGTH_SHORT).show();
+                }
+                else{
+                    Toast.makeText(getApplicationContext(), "login successful!", Toast.LENGTH_SHORT).show();
+                    Intent intent_toRegister = new Intent(getApplicationContext(), Map.class);
+                    startActivity(intent_toRegister);
+                }
+
+            }
+            catch (JSONException e){
+                e.printStackTrace();
+            }
+
+        }
     }
 
     public void onClick_register (View v){

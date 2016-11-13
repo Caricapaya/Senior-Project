@@ -14,15 +14,26 @@
         android:theme="@style/AppTheme">
         <activity android:name=".Map">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <service android:name=".SendLocationService" android:enabled="true"/>
         <meta-data android:name="com.google.android.maps.v2.API_KEY" android:value="AIzaSyDGXXBrAdihUZ92iP5D5tzQUUCl4OBpE2M" />
+
+        <meta-data
+            android:name="com.google.android.maps.v2.API_KEY"
+            android:value="AIzaSyDGXXBrAdihUZ92iP5D5tzQUUCl4OBpE2M" />
+
+        <activity android:name=".Login">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".Register">
+            <intent-filter>
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
-
-
-
 </manifest>
