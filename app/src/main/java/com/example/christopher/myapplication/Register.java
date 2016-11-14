@@ -62,9 +62,16 @@ public class Register extends AppCompatActivity {
             Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show();
             return;
         }
+        if (input_gender.getCheckedRadioButtonId() == -1){
+            Toast.makeText(this, "Please select your gender", Toast.LENGTH_SHORT).show();
+            return;
+        }if (input_status.getCheckedRadioButtonId() == -1){
+            Toast.makeText(this, "Please select your occupation", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        String email = input_ID.toString();
-        String pass = input_PW.toString();
+        String email = input_ID.getText().toString();
+        String pass = input_PW.getText().toString();
         String gender = ((RadioButton)findViewById(input_gender.getCheckedRadioButtonId())).getText().toString();
         String status = ((RadioButton)findViewById(input_status.getCheckedRadioButtonId())).getText().toString();
         editor.putString("ID", email);
@@ -139,9 +146,12 @@ public class Register extends AppCompatActivity {
                 return;
             }
             try{
-                if (!jsonObject.getBoolean("signupsuccessfull")){
+                if (!jsonObject.getBoolean("signupsuccessful")){
                     Toast.makeText(getApplicationContext(), jsonObject.getString("why"), Toast.LENGTH_SHORT).show();
                     return;
+                }
+                else {
+                    Toast.makeText(getApplicationContext(), "New user created!", Toast.LENGTH_SHORT).show();
                 }
                 editor.commit();
                 Intent intent_toLogin = new Intent(getApplicationContext(), Login.class);

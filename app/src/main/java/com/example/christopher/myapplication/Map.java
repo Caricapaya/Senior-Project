@@ -30,6 +30,7 @@ import android.view.View.OnClickListener;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -136,6 +137,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             myMap.getUiSettings().setZoomControlsEnabled(true);
             myMap.getUiSettings().setMapToolbarEnabled(false);
             myMap.setOnMarkerClickListener(this);
+            myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(47.922308, -97.071289), 16));
 
             /*LocationManager locManager = (LocationManager) getSystemService(LOCATION_SERVICE);
             Criteria criteria = new Criteria();
@@ -179,8 +181,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             lastLocationMarker = myMap.addMarker(myMarker);
 
             if (firstMapUpdate){
-                myMap.moveCamera(CameraUpdateFactory.newLatLngZoom(coordinates, 15));
-                myMap.animateCamera(CameraUpdateFactory.zoomTo(17), 2000, null);
+                myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(coordinates,17), 2000, null);
                 firstMapUpdate = false;
             }
         }
@@ -440,7 +441,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 }
             }
         };
-        handler.postDelayed(runnable, 5000);
+        handler.postDelayed(runnable, 0);
 
     }
 
@@ -454,8 +455,9 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 mySocket = new Socket(address, 50001);
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
+
                 JSONObject jsonMessage = new JSONObject();
-                jsonMessage.put("type", "GET_LOCATIONS");
+                jsonMessage.put("type", NetworkConstants.TYPE_GET_LOCATIONS);
                 printWriter.println(jsonMessage);
                 String unparsed = bufferedReader.readLine();
                 mySocket.close();
@@ -481,6 +483,9 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         protected void onPostExecute(List<Person> persons) {
             for (Marker m : otherMarkers){
                 m.remove();
+            }
+            if (persons == null){
+                return;
             }
             for (Person person : persons){
                 String deviceID = person.getDeviceID();
