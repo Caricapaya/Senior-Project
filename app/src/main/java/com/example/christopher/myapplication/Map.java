@@ -88,9 +88,11 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
     boolean firstMapUpdate;
 
     // Sliding menu
-    private final String[] navItems = {"Brown", "Blue", "Green", "Orange", "Golden"};
+    private final String[] navItems = {"1", "2", "3", "4", "5"};
+    private final String[] navItems2 = {"6", "7", "8", "9", "10"};
 
     private ListView lvNavList;
+    private ListView lvNavList2;
 
     private FrameLayout flContainer;
 
@@ -130,9 +132,13 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
         // 슬라이딩 여기 밑에서 원랜 슬라이드 메뉴가 적혀있었음.
         //setContentView(R.layout.activity_slide_menu);
         //setContentView(R.layout.activity_map);
-        lvNavList = (ListView)findViewById(R.id.lv_activity_main_nav_list);
+        lvNavList = (ListView)findViewById(R.id.lv_activity_main_nav_list_start);
+        lvNavList2 = (ListView)findViewById(R.id.lv_activity_main_nav_list_end);
+
         flContainer = (FrameLayout)findViewById(R.id.fl_activity_main_container);
-        btn = (Button)findViewById(R.id.btn);
+        //flContainer = (FrameLayout)findViewById(R.id.googleMap);
+
+        //btn = (Button)findViewById(R.id.btn); //11/28 필요없는 것 같아서 일단 주석처리
 
         // 여기 코멘트 처리 하는거로 일단 맵이 보이긴 하는데(에러없이)... 아놔 모르겠다.
 /**        btn.setOnClickListener(new OnClickListener() {
@@ -148,6 +154,9 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
         dlDrawer = (DrawerLayout)findViewById(R.id.activity_map);
         lvNavList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, navItems));
         lvNavList.setOnItemClickListener(new DrawerItemClickListener());
+        lvNavList2.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, navItems2));
+        lvNavList2.setOnItemClickListener(new DrawerItemClickListener2());
+
         // 슬라이딩 끝
 
     }
@@ -186,7 +195,33 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
                     flContainer.setBackgroundColor(Color.parseColor("#DAA520"));
                     break;
             }
-            dlDrawer.closeDrawer(lvNavList);
+            dlDrawer.closeDrawer(lvNavList); // 이게 클릭하면 그냥 드로워를 다시 집어넣는 역할
+
+        }
+    }
+
+    private class DrawerItemClickListener2 implements ListView.OnItemClickListener {
+
+        @Override
+        public void onItemClick(AdapterView<?> adapter, View view, int position, long id) {
+            switch (position) {
+                case 0:
+                    flContainer.setBackgroundColor(Color.parseColor("#A52A2A"));
+                    break;
+                case 1:
+                    flContainer.setBackgroundColor(Color.parseColor("#5F9EA0"));
+                    break;
+                case 2:
+                    flContainer.setBackgroundColor(Color.parseColor("#556B2F"));
+                    break;
+                case 3:
+                    flContainer.setBackgroundColor(Color.parseColor("#FF8C00"));
+                    break;
+                case 4:
+                    flContainer.setBackgroundColor(Color.parseColor("#DAA520"));
+                    break;
+            }
+            dlDrawer.closeDrawer(lvNavList2);
 
         }
     }
