@@ -85,7 +85,7 @@ import android.widget.Toast;
 
 
 
-public class Map extends AppCompatActivity implements LocationListener, OnMapReadyCallback, OnClickListener, OnLongClickListener, OnMarkerClickListener{
+public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClickListener, OnLongClickListener, OnMarkerClickListener{
     GoogleMap myMap;
     LatLng lastLocation;
     Marker lastLocationMarker;
