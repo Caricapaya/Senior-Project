@@ -21,6 +21,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.view.View;
 import android.view.View.OnLongClickListener;
@@ -94,7 +95,8 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
     private ListView lvNavList;
     private ListView lvNavList2;
 
-    private FrameLayout flContainer;
+    //private FrameLayout flContainer;
+    private RelativeLayout flContainer;
 
     private DrawerLayout dlDrawer;
 
@@ -135,7 +137,7 @@ public class Map extends AppCompatActivity implements LocationListener, OnMapRea
         lvNavList = (ListView)findViewById(R.id.lv_activity_main_nav_list_start);
         lvNavList2 = (ListView)findViewById(R.id.lv_activity_main_nav_list_end);
 
-        flContainer = (FrameLayout)findViewById(R.id.fl_activity_main_container);
+        flContainer = (RelativeLayout) findViewById(R.id.fl_activity_main_container);
         //flContainer = (FrameLayout)findViewById(R.id.googleMap);
 
         //btn = (Button)findViewById(R.id.btn); //11/28 필요없는 것 같아서 일단 주석처리
