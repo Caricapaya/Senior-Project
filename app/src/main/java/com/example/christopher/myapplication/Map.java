@@ -6,14 +6,13 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.os.PersistableBundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -26,11 +25,11 @@ import android.widget.TextView;
 import android.view.View;
 import android.view.View.OnLongClickListener;
 import android.view.View.OnClickListener;
+import android.widget.Toast;
 
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -43,17 +42,16 @@ import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
@@ -73,8 +71,11 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
 
     boolean firstMapUpdate;
 
-    NetworkIO networkThread;
-    Handler UIHandler;
+    LocationReceiver receiver;
+    Handler getLocationSheduler;
+    TimedLocationGetter getLocationRoutine;
+
+    SharedPreferences sessionInfo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +85,8 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         destinationRoute = null;
         firstMapUpdate = true;
         otherMarkers = new ArrayList<>();
+
+        sessionInfo = getSharedPreferences("sessionInfo", 0);
 
         if (ConnectionResult.SUCCESS != GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this)){
             GoogleApiAvailability.getInstance().getErrorDialog(this, GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this), 0).show();
@@ -100,12 +103,14 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
 
         //initializeIOThread();
 
-        IntentFilter filter = new IntentFilter(SendLocationService.BROADCAST_ACTION);
-        LocationReceiver receiver = new LocationReceiver();
-        registerReceiver(receiver, filter);
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(SendLocationService.BROADCAST_MYLOCATION);
+        filter.addAction(SendLocationService.BROADCAST_SENDLOCATIONRESPONSE);
+        /*receiver = new LocationReceiver();
+        registerReceiver(receiver, filter);*/
 
         startService(new Intent(this, SendLocationService.class));
-        initializeLocationGetter();
+        getLocationSheduler = new Handler();
 
         setUpMap();
 
@@ -168,21 +173,37 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
     private class LocationReceiver extends BroadcastReceiver{
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (myMap == null){
-                return;
-            }
-            if (lastLocationMarker != null) {
-                lastLocationMarker.remove();
-            }
-            double longitude = intent.getDoubleExtra("longitude", 0);
-            double latitude = intent.getDoubleExtra("latitude", 0);
-            LatLng coordinates = lastLocation = new LatLng(latitude, longitude);
-            MarkerOptions myMarker = new MarkerOptions().position(coordinates).title("We're Here!").snippet("IDK what this snippet is");
-            lastLocationMarker = myMap.addMarker(myMarker);
+            if (intent.getAction().equals(SendLocationService.BROADCAST_MYLOCATION)) {
+                Log.d("DEBUG", "in mylocation receiver");
+                if (myMap == null) {
+                    return;
+                }
+                if (lastLocationMarker != null) {
+                    lastLocationMarker.remove();
+                }
+                double longitude = intent.getDoubleExtra("longitude", 0);
+                double latitude = intent.getDoubleExtra("latitude", 0);
+                LatLng coordinates = lastLocation = new LatLng(latitude, longitude);
+                MarkerOptions myMarker = new MarkerOptions().position(coordinates).title("We're Here!");
+                lastLocationMarker = myMap.addMarker(myMarker);
 
-            if (firstMapUpdate){
-                myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(coordinates,17), 2000, null);
-                firstMapUpdate = false;
+                if (firstMapUpdate) {
+                    myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(coordinates, 17), 2000, null);
+                    firstMapUpdate = false;
+                }
+            }
+            else if (intent.getAction().equals(SendLocationService.BROADCAST_SENDLOCATIONRESPONSE)) {
+                Log.d("DEBUG", "in response receiver");
+                Log.d("DEBUG", intent.getStringExtra("response"));
+                Log.d("DEBUG", "CONNECTED: " + intent.getBooleanExtra("connected",false));
+                checkSessionResponse(intent.getStringExtra("response"));
+
+                TextView locationLabel = (TextView) findViewById(R.id.locationLabel);
+                if (intent.getBooleanExtra("connected", true)) {
+                    locationLabel.setBackgroundColor(0xFF30E852);
+                } else {
+                    locationLabel.setBackgroundColor(Color.RED);
+                }
             }
         }
     }
@@ -419,51 +440,91 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                     }
                 });
                 builder.create().show();*/
-                Message myMsg = Message.obtain();
-                myMsg.what = NetworkIO.Type.SEND_LOCATION.ordinal();
-                myMsg.obj = lastLocation;
-                networkThread.IOHandler.sendMessage(myMsg);
+                TextView locationLabel = (TextView) findViewById(R.id.locationLabel);
+                String sessiontxt = "SESSION: " + sessionInfo.getString("sessionid", "none found") + "\n";
+                String nametxt = "NAME: " + sessionInfo.getString("firstname", "");
+                nametxt += sessionInfo.getString("middlename", "");
+                nametxt += sessionInfo.getString("lastname", "");
+                locationLabel.setText(sessiontxt + nametxt);
             }
         }
     }
 
+    private class TimedLocationGetter implements Runnable{
+        private volatile boolean isCancelled;
+        public TimedLocationGetter(){
+            isCancelled = false;
+        }
+
+        @Override
+        public void run() {
+            try{
+                if (isCancelled){
+                    return;
+                }
+                GetLocationsTask getLocationsTask = new GetLocationsTask();
+                getLocationsTask.execute("");
+            }
+            finally {
+                if (isCancelled){
+                    return;
+                }
+                 getLocationSheduler.postDelayed(this, 5000);
+            }
+        }
+
+        public void cancel(){
+            isCancelled = true;
+        }
+    }
+
     public void initializeLocationGetter(){
-        final Handler handler = new Handler();
+        getLocationRoutine = new TimedLocationGetter();
+        getLocationSheduler.postDelayed(getLocationRoutine, 0);
+        /*final Handler handler = new Handler();
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                try{
-                    GetLocationsTask getLocationsTask = new GetLocationsTask();
-                    getLocationsTask.execute("");
-                }
-                finally {
-                    handler.postDelayed(this, 5000);
-                }
+
             }
         };
-        handler.postDelayed(runnable, 0);
+        handler.postDelayed(runnable, 0);*/
 
     }
 
     private class GetLocationsTask extends AsyncTask<String, Integer, List<Person>>{
+        JSONObject response;
+
         @Override
         protected List<Person> doInBackground(String... params) {
+            Log.d("DEBUG", "START GET LOCATIONS TASK");
             Socket mySocket;
             List<Person> people = null;
             try{
                 InetAddress address = InetAddress.getByName("csclserver.hopto.org");
-                mySocket = new Socket(address, 50001);
+                Log.d("DEBUG", "GET LOCATIONS TASK OPENSOCKET");
+                mySocket = new Socket();
+                mySocket.setSoTimeout(2000);
+                mySocket.connect(new InetSocketAddress(address, 50001),2000);
+                Log.d("DEBUG", "GET LOCATIONS TASK READER");
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+                Log.d("DEBUG", "GET LOCATIONS TASK WRITER");
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
 
                 JSONObject jsonMessage = new JSONObject();
                 jsonMessage.put("type", NetworkConstants.TYPE_GET_LOCATIONS);
+                jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
+                Log.d("DEBUG", "GET LOCATIONS TASK PRINT");
                 printWriter.println(jsonMessage);
+                Log.d("DEBUG", "GET LOCATIONS TASK READ");
                 String unparsed = bufferedReader.readLine();
+                Log.d("DEBUG", "GET LOCATIONS TASK READEND");
                 mySocket.close();
 
                 JSONParser parser = new JSONParser();
-                people = parser.parseLocations(new JSONObject(unparsed));
+                response = new JSONObject(unparsed);
+                people = parser.parseLocations(response);
+
             }
             catch (JSONException e){
                 e.printStackTrace();
@@ -475,12 +536,14 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 e.printStackTrace();
             }
             finally {
+                Log.d("DEBUG", "END GET LOCATIONS TASK");
                 return people;
             }
         };
 
         @Override
         protected void onPostExecute(List<Person> persons) {
+            checkSessionResponse(response);
             for (Marker m : otherMarkers){
                 m.remove();
             }
@@ -499,6 +562,66 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         }
     }
 
+    public void checkSessionResponse(JSONObject serverMessage){
+        if (serverMessage!= null){
+            try{
+                String sessionStatus = serverMessage.getString("sessionstatus");
+                if (sessionStatus.equals("invalid")){
+                    Toast.makeText(getApplicationContext(), "Unknown session identifier", Toast.LENGTH_SHORT);
+                    startActivity(new Intent(getApplicationContext(), Login.class));
+                }
+                else if (sessionStatus.equals("timeout")){
+                    Toast.makeText(getApplicationContext(), "Session timed out, please log in again", Toast.LENGTH_SHORT);
+                    startActivity(new Intent(getApplicationContext(), Login.class));
+                }
+                else if (sessionStatus.equals("update")){
+                    SharedPreferences.Editor sessionEditor = sessionInfo.edit();
+                    String newSessionID = serverMessage.getString("sessionid");
+                    sessionEditor.putString("sessionid", newSessionID);
+                    sessionEditor.commit();
+                }
+            }
+            catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
+    public void checkSessionResponse(String serverMessage){
+        if (serverMessage == null){
+            return;
+        }
+        try{
+            checkSessionResponse(new JSONObject(serverMessage));
+        }
+        catch (JSONException e){
+            e.printStackTrace();
+        }
+    }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(receiver);
+        getLocationSheduler.removeCallbacks(getLocationRoutine);
+        getLocationRoutine.cancel();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(SendLocationService.BROADCAST_MYLOCATION);
+        filter.addAction(SendLocationService.BROADCAST_SENDLOCATIONRESPONSE);
+        receiver = new LocationReceiver();
+        registerReceiver(receiver, filter);
+
+        getLocationRoutine = new TimedLocationGetter();
+        getLocationSheduler.postDelayed(getLocationRoutine, 0);
+    }
 }
