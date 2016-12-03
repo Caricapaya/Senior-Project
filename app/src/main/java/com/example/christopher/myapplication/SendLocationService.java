@@ -2,6 +2,7 @@ package com.example.christopher.myapplication;
 
 import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -9,12 +10,8 @@ import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.os.Message;
 import android.support.annotation.Nullable;
 import android.util.Log;
-import android.widget.Toast;
-
-import com.google.android.gms.maps.model.LatLng;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -24,7 +21,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 
 /**
@@ -33,14 +32,16 @@ import java.net.UnknownHostException;
  */
 
 public class SendLocationService extends Service {
-    public static String BROADCAST_ACTION = "com.MyApplication.MY_LOCATION";
+    public static String BROADCAST_MYLOCATION = "com.MyApplication.MY_LOCATION";
+    public static String BROADCAST_SENDLOCATIONRESPONSE = "com.MyApplication.SEND_LOCATION_RESPONSE";
     LocationManager locationManager;
     LocationListener listener;
-    Intent intent;
+
+    SharedPreferences sessionInfo;
 
     @Override
     public void onCreate() {
-        intent = new Intent(BROADCAST_ACTION);
+        sessionInfo = getSharedPreferences("sessionInfo", 0);
     }
 
     @Override
@@ -80,12 +81,15 @@ public class SendLocationService extends Service {
     private class MyLocationListener implements LocationListener{
         @Override
         public void onLocationChanged(final Location location) {
+            Intent intent = new Intent(BROADCAST_MYLOCATION);
             intent.putExtra("latitude", location.getLatitude());
             intent.putExtra("longitude", location.getLongitude());
             sendBroadcast(intent);
 
+            Log.d("DEBUG", "TRY NEW TASK");
             SendLocationTask sendLocationTask = new SendLocationTask();
             sendLocationTask.execute(location);
+            Log.d("DEBUG", "AFTER TRY NEW TASK");
         }
 
         @Override
@@ -104,13 +108,19 @@ public class SendLocationService extends Service {
         }
     }
 
-    private class SendLocationTask extends AsyncTask<Location, Integer, String>{
+
+    //TODO remove loggers and prints. stop sending location when logged out.
+    private class SendLocationTask extends AsyncTask<Location, Integer, Intent>{
         @Override
-        protected String doInBackground(Location... params) {
+        protected Intent doInBackground(Location... params) {
+            Intent intent = new Intent(BROADCAST_SENDLOCATIONRESPONSE);
             Location location = params[0];
             try{
-                InetAddress address = java.net.InetAddress.getByName("csclserver.hopto.org");
-                Socket mySocket = new Socket(address, 50001);
+                Log.d("DEBUG", "START SEND LOCATION TASK");
+                InetAddress address = InetAddress.getByName("csclserver.hopto.org");
+                Socket mySocket = new Socket();
+                mySocket.setSoTimeout(2000);
+                mySocket.connect(new InetSocketAddress(address, 50001), 2000);
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
                 JSONObject jsonMessage = new JSONObject();
@@ -119,23 +129,52 @@ public class SendLocationService extends Service {
                 jsonLocation.put("latitude", location.getLatitude());
                 jsonLocation.put("longitude", location.getLongitude());
                 jsonMessage.put("location", jsonLocation);
+                jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
                 printWriter.println(jsonMessage.toString());
                 String serverResponse = bufferedReader.readLine();
                 intent.putExtra("response", serverResponse);
+                intent.putExtra("connected", true);
                 mySocket.close();
             }
+            catch (SocketTimeoutException e){
+                Log.d("DEBUG", "TIMEOUT");
+                intent.putExtra("connected", false);
+                intent.putExtra("response", "none");
+                e.printStackTrace();
+            }
             catch (UnknownHostException e){
+                Log.d("DEBUG", "UNKNOWN HOST");
+                intent.putExtra("connected", false);
+                intent.putExtra("response", "none");
                 e.printStackTrace();
             }
             catch (IOException e){
+                Log.d("DEBUG", "IOERROR");
+                intent.putExtra("connected", false);
+                intent.putExtra("response", "none");
                 e.printStackTrace();
             }
             catch (JSONException e){
+                Log.d("DEBUG", "JSONBS");
+                intent.putExtra("connected", false);
+                intent.putExtra("response", "none");
+                e.printStackTrace();
+            }
+            catch (Exception e){
+                Log.d("DEBUG", "REGULAR");
+                intent.putExtra("connected", false);
+                intent.putExtra("response", "none");
                 e.printStackTrace();
             }
             finally {
-                return null;
+                Log.d("DEBUG", "DONE DOINBACKGROUND");
+                return intent;
             }
+        }
+
+        @Override
+        protected void onPostExecute(Intent intent) {
+            sendBroadcast(intent);
         }
     }
 }

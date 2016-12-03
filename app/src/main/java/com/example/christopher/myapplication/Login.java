@@ -41,6 +41,8 @@ public class Login extends AppCompatActivity {
     SharedPreferences setting;
     SharedPreferences.Editor editor;
 
+    SharedPreferences sessionInfo;
+
 
 
 
@@ -58,6 +60,8 @@ public class Login extends AppCompatActivity {
 
         setting = getSharedPreferences("setting", 0);
         editor = setting.edit();
+
+        sessionInfo = getSharedPreferences("sessionInfo", 0);
 
 
         /*
@@ -204,6 +208,8 @@ public class Login extends AppCompatActivity {
             String pass = params[1];
             JSONObject response = null;
             try{
+                String sessionID = sessionInfo.getString("sessionid", "");
+
                 InetAddress address = java.net.InetAddress.getByName("csclserver.hopto.org");
                 Socket mySocket = new Socket();
                 mySocket.setSoTimeout(500);
@@ -214,6 +220,7 @@ public class Login extends AppCompatActivity {
                 jsonMessage.put("type", NetworkConstants.TYPE_LOGIN);
                 jsonMessage.put("username", user);
                 jsonMessage.put("password", pass);
+                jsonMessage.put("sessionid", sessionID);
                 printWriter.println(jsonMessage.toString());
                 String serverResponse = bufferedReader.readLine();
                 response = new JSONObject(serverResponse);
@@ -257,6 +264,12 @@ public class Login extends AppCompatActivity {
                 else{
                     Toast.makeText(getApplicationContext(), "login successful!", Toast.LENGTH_SHORT).show();
                     Intent intent_toRegister = new Intent(getApplicationContext(), Map.class);
+                    SharedPreferences.Editor sessionEditor = sessionInfo.edit();
+                    sessionEditor.putString("sessionid", jsonObject.getString("sessionid"));
+                    sessionEditor.putString("firstname", jsonObject.getString("firstname"));
+                    sessionEditor.putString("middlename", jsonObject.getString("middlename"));
+                    sessionEditor.putString("lastname", jsonObject.getString("lastname"));
+                    sessionEditor.commit();
                     startActivity(intent_toRegister);
                 }
 
