@@ -21,6 +21,8 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.view.View;
@@ -69,20 +71,10 @@ import java.util.List;
  *
  * 이창우
  */
-import android.app.Activity;
-import android.graphics.Color;
-import android.os.Bundle;
 import android.support.v4.widget.DrawerLayout;
-import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.ListView;
-import android.widget.Toast;
-
-
 
 
 public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClickListener, OnLongClickListener, OnMarkerClickListener{
@@ -90,9 +82,14 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
     LatLng lastLocation;
     Marker lastLocationMarker;
     Marker destinationMarker;
+    Marker targetFriendMarker;
+    HashMap<Marker, Person> markerToPerson;
     List<Marker> otherMarkers;
+    List<Marker> friendMarkers;
+    List<Person> friendLocations;
     Polyline destinationRoute;
 
+    boolean friendLocationsUpdate;
     boolean firstMapUpdate;
 
     LocationReceiver receiver;
@@ -101,18 +98,19 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
 
     SharedPreferences sessionInfo;
     // Sliding menu
-    private final String[] navItems = {"1", "2", "3", "4", "5"};
-    private final String[] navItems2 = {"6", "7", "8", "9", "10"};
+    private final String[] navItems = {"1", "2", "3", "4", "5", "Sign Out"};
+    private final String[] navItems2 = {"6", "7", "8", "9", "10","6", "7", "8", "9", "10","6", "7", "8", "9", "10"};
+    private final String[] resultTest = {"CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL"};
 
     private ListView lvNavList;
     private ListView lvNavList2;
+    private ListView searchResultList;
+    private LinearLayout friendsNavigation;
 
     //private FrameLayout flContainer;
     private RelativeLayout flContainer;
 
     private DrawerLayout dlDrawer;
-
-    private Button btn;
     // sliding menu done
 
 
@@ -121,9 +119,13 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         super.onCreate(savedInstanceState);
         lastLocationMarker = null;
         destinationMarker = null;
+        targetFriendMarker = null;
         destinationRoute = null;
         firstMapUpdate = true;
+        friendLocationsUpdate = false;
         otherMarkers = new ArrayList<>();
+        friendMarkers = new ArrayList<>();
+        markerToPerson = new HashMap<>();
 
         sessionInfo = getSharedPreferences("sessionInfo", 0);
 
@@ -138,7 +140,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
 
         TextView txtView = (TextView) findViewById(R.id.locationLabel);
         txtView.setOnClickListener(this);
-        txtView.setOnLongClickListener(this);
+        //txtView.setOnLongClickListener(this);
 
         //initializeIOThread();
 
@@ -158,9 +160,11 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         //setContentView(R.layout.activity_slide_menu);
         //setContentView(R.layout.activity_map);
         lvNavList = (ListView)findViewById(R.id.lv_activity_main_nav_list_start);
-        lvNavList2 = (ListView)findViewById(R.id.lv_activity_main_nav_list_end);
+        lvNavList2 = (ListView)findViewById(R.id.listOfFriends);
+        searchResultList = (ListView)findViewById(R.id.searchResults);
 
         flContainer = (RelativeLayout) findViewById(R.id.fl_activity_main_container);
+        friendsNavigation = (LinearLayout) findViewById(R.id.friendsDrawer);
         //flContainer = (FrameLayout)findViewById(R.id.googleMap);
 
         //btn = (Button)findViewById(R.id.btn); //11/28 필요없는 것 같아서 일단 주석처리
@@ -181,6 +185,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         lvNavList.setOnItemClickListener(new DrawerItemClickListener());
         lvNavList2.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, navItems2));
         lvNavList2.setOnItemClickListener(new DrawerItemClickListener2());
+        searchResultList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, resultTest));
 
         // 슬라이딩 끝
 
@@ -219,11 +224,53 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 case 4:
                     flContainer.setBackgroundColor(Color.parseColor("#DAA520"));
                     break;
+                case 5:
+                    signOut();
+                    break;
             }
             dlDrawer.closeDrawer(lvNavList); // 이게 클릭하면 그냥 드로워를 다시 집어넣는 역할
 
         }
     }
+
+    private void signOut(){
+        stopService(new Intent(this, SendLocationService.class));
+        new SignOutOfServerTask().execute();
+        startActivity(new Intent(this, Login.class));
+    }
+
+    private class SignOutOfServerTask extends AsyncTask<String, Integer, String>{
+        @Override
+        protected String doInBackground(String... params) {
+            Socket mySocket;
+            try{
+                InetAddress address = InetAddress.getByName("csclserver.hopto.org");
+                mySocket = new Socket();
+                mySocket.setSoTimeout(2000);
+                mySocket.connect(new InetSocketAddress(address, 50001),2000);
+                PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
+
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("type", NetworkConstants.TYPE_QUIT);
+                jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
+                printWriter.println(jsonMessage);
+                mySocket.close();
+            }
+            catch (JSONException e){
+                e.printStackTrace();
+            }
+            catch (UnknownHostException e){
+                e.printStackTrace();
+            }
+            catch (IOException e){
+                e.printStackTrace();
+            }
+            finally {
+                return null;
+            }
+        }
+    }
+
 
     private class DrawerItemClickListener2 implements ListView.OnItemClickListener {
 
@@ -308,11 +355,11 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         super.onCreate(savedInstanceState, persistentState);
     }
 
+    //Handles messages (intents) about this device's location and the relevant server response
     private class LocationReceiver extends BroadcastReceiver{
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(SendLocationService.BROADCAST_MYLOCATION)) {
-                Log.d("DEBUG", "in mylocation receiver");
                 if (myMap == null) {
                     return;
                 }
@@ -329,11 +376,68 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                     myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(coordinates, 17), 2000, null);
                     firstMapUpdate = false;
                 }
+
+
+                if (friendLocationsUpdate){
+                    friendLocationsUpdate = false;
+                    Person currtarget = markerToPerson.get(targetFriendMarker);
+                    if (currtarget == null){
+                        Log.d("debug", "target is null");
+                    }
+                    else{
+                        Log.d("debug", "target has value");
+                    }
+                    for (Marker m : friendMarkers){
+                        m.remove();
+                    }
+                    markerToPerson.clear();
+                    targetFriendMarker = null;
+                    if (friendLocations != null)
+                    {
+                        if (currtarget == null){
+                            Log.d("debug", "target is now null");
+                        }
+                        else{
+                            Log.d("debug", "target now has value");
+                        }
+                        for (Person person : friendLocations){
+                            String deviceID = person.getDeviceID();
+                            String name = person.getName();
+                            MarkerOptions markerOptions = new MarkerOptions();
+                            markerOptions.title(name);
+                            markerOptions.snippet("Device ID: " + deviceID);
+                            markerOptions.position(person.getLocation());
+                            Marker tempMarker = myMap.addMarker(markerOptions);
+                            friendMarkers.add(tempMarker);
+                            markerToPerson.put(tempMarker, person);
+                            if (person.isSamePerson(currtarget)){
+                                targetFriendMarker = tempMarker;
+                                Log.d("DEBUG", "Issametarget");
+                            }
+                            else{
+                                Log.d("DEBUG", "Isnotsametarget");
+                            }
+                        }
+                    }
+                }
+                if (targetFriendMarker != null){
+                    try {
+                        PathGetter pathGetter = new PathGetter();
+                        String requestURL = buildRequestURL(lastLocationMarker.getPosition(), targetFriendMarker.getPosition());
+                        pathGetter.execute(requestURL);
+                    } catch (Exception e) {
+                        targetFriendMarker = null;
+                        Toast.makeText(getApplicationContext(),"Error: can't draw path", Toast.LENGTH_SHORT).show();
+                        e.printStackTrace();
+                    }
+                }
+                else{
+                    if (destinationRoute != null){
+                        destinationRoute.remove();
+                    }
+                }
             }
             else if (intent.getAction().equals(SendLocationService.BROADCAST_SENDLOCATIONRESPONSE)) {
-                Log.d("DEBUG", "in response receiver");
-                Log.d("DEBUG", intent.getStringExtra("response"));
-                Log.d("DEBUG", "CONNECTED: " + intent.getBooleanExtra("connected",false));
                 checkSessionResponse(intent.getStringExtra("response"));
 
                 TextView locationLabel = (TextView) findViewById(R.id.locationLabel);
@@ -388,6 +492,64 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
 
             optionDialog.show();
             return true;
+        }
+        if (friendMarkers.contains(marker)){
+            if (marker.equals(targetFriendMarker)){
+                AlertDialog.Builder optionDialog = new AlertDialog.Builder(this);
+                optionDialog.setTitle("Target Friend");
+                optionDialog.setMessage("Stop drawing path?");
+
+                optionDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        return;
+                    }
+                });
+
+                optionDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        destinationRoute.remove();
+                        targetFriendMarker = null;
+                    }
+                });
+
+                optionDialog.show();
+                return true;
+            }
+            else{
+                AlertDialog.Builder optionDialog = new AlertDialog.Builder(this);
+                optionDialog.setTitle("Friend");
+                optionDialog.setMessage("Draw path to this friend?");
+
+                optionDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        return;
+                    }
+                });
+
+                optionDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        try {
+                            PathGetter pathGetter = new PathGetter();
+                            String requestURL = buildRequestURL(lastLocationMarker.getPosition(), marker.getPosition());
+                            pathGetter.execute(requestURL);
+                            targetFriendMarker = marker;
+                        } catch (Exception e) {
+                            AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                            builder.setMessage("Can't download and/or draw path");
+                            builder.setTitle("Error!");
+                            builder.create().show();
+                            e.printStackTrace();
+                        }
+                    }
+                });
+
+                optionDialog.show();
+                return true;
+            }
         }
         return false;
     }
@@ -488,6 +650,9 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 polylineOptions.addAll(points);
                 polylineOptions.width(5);
                 polylineOptions.color(Color.BLUE);
+                if (destinationRoute != null){
+                    destinationRoute.remove();
+                }
                 destinationRoute = myMap.addPolyline(polylineOptions);
             }
         }
@@ -585,6 +750,10 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 nametxt += sessionInfo.getString("lastname", "");
                 locationLabel.setText(sessiontxt + nametxt);
             }
+            case R.id.searchButton: {
+                EditText searchBox = (EditText) findViewById(R.id.searchEditText);
+                String searchQuery = searchBox.getText().toString();
+            }
         }
     }
 
@@ -616,47 +785,28 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         }
     }
 
-    public void initializeLocationGetter(){
-        getLocationRoutine = new TimedLocationGetter();
-        getLocationSheduler.postDelayed(getLocationRoutine, 0);
-        /*final Handler handler = new Handler();
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
 
-            }
-        };
-        handler.postDelayed(runnable, 0);*/
-
-    }
-
+    //TODO implement realtime pathfinder
     private class GetLocationsTask extends AsyncTask<String, Integer, List<Person>>{
         JSONObject response;
 
         @Override
         protected List<Person> doInBackground(String... params) {
-            Log.d("DEBUG", "START GET LOCATIONS TASK");
             Socket mySocket;
             List<Person> people = null;
             try{
                 InetAddress address = InetAddress.getByName("csclserver.hopto.org");
-                Log.d("DEBUG", "GET LOCATIONS TASK OPENSOCKET");
                 mySocket = new Socket();
                 mySocket.setSoTimeout(2000);
                 mySocket.connect(new InetSocketAddress(address, 50001),2000);
-                Log.d("DEBUG", "GET LOCATIONS TASK READER");
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
-                Log.d("DEBUG", "GET LOCATIONS TASK WRITER");
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
 
                 JSONObject jsonMessage = new JSONObject();
                 jsonMessage.put("type", NetworkConstants.TYPE_GET_LOCATIONS);
                 jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
-                Log.d("DEBUG", "GET LOCATIONS TASK PRINT");
                 printWriter.println(jsonMessage);
-                Log.d("DEBUG", "GET LOCATIONS TASK READ");
                 String unparsed = bufferedReader.readLine();
-                Log.d("DEBUG", "GET LOCATIONS TASK READEND");
                 mySocket.close();
 
                 JSONParser parser = new JSONParser();
@@ -679,10 +829,18 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             }
         };
 
+        //TODO update current location and other markers at the same time
         @Override
         protected void onPostExecute(List<Person> persons) {
             checkSessionResponse(response);
-            for (Marker m : otherMarkers){
+            friendLocationsUpdate = true;
+            if (persons.size() > 0){
+                friendLocations = persons;
+            }
+            else{
+                friendLocations = null;
+            }
+            /*for (Marker m : otherMarkers){
                 m.remove();
             }
             if (persons == null){
@@ -696,7 +854,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 markerOptions.snippet("Device ID: " + deviceID);
                 markerOptions.position(person.getLocation());
                 otherMarkers.add(myMap.addMarker(markerOptions));
-            }
+            }*/
         }
     }
 
@@ -705,12 +863,18 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             try{
                 String sessionStatus = serverMessage.getString("sessionstatus");
                 if (sessionStatus.equals("invalid")){
-                    Toast.makeText(getApplicationContext(), "Unknown session identifier", Toast.LENGTH_SHORT);
-                    startActivity(new Intent(getApplicationContext(), Login.class));
+                    Bundle bundle = new Bundle();
+                    bundle.putString("startuptoast", "Unknown session identifier");
+                    //Toast.makeText(getApplicationContext(), "Unknown session identifier", Toast.LENGTH_SHORT);
+                    stopService(new Intent(this, SendLocationService.class));
+                    startActivity(new Intent(getApplicationContext(), Login.class).putExtras(bundle));
                 }
                 else if (sessionStatus.equals("timeout")){
-                    Toast.makeText(getApplicationContext(), "Session timed out, please log in again", Toast.LENGTH_SHORT);
-                    startActivity(new Intent(getApplicationContext(), Login.class));
+                    Bundle bundle = new Bundle();
+                    bundle.putString("startuptoast", "Session timed out, please log in again");
+                    //Toast.makeText(getApplicationContext(), "Session timed out, please log in again", Toast.LENGTH_SHORT);
+                    stopService(new Intent(this, SendLocationService.class));
+                    startActivity(new Intent(getApplicationContext(), Login.class).putExtras(bundle));
                 }
                 else if (sessionStatus.equals("update")){
                     SharedPreferences.Editor sessionEditor = sessionInfo.edit();

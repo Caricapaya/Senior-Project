@@ -53,16 +53,58 @@
         android:divider="@android:color/transparent"
         android:dividerHeight="0dp" />
 
+    <!--SearchView
+        android:layout_width="match_parent"
+        android:layout_height="40dp"></SearchView-->
 
-    <ListView
-        android:id="@+id/lv_activity_main_nav_list_end"
+    <LinearLayout
+        android:orientation="vertical"
+        android:id="@+id/friendsDrawer"
         android:layout_width="240dp"
         android:layout_height="match_parent"
         android:layout_gravity="end"
-        android:background="#EDEDED"
-        android:choiceMode="singleChoice"
-        android:divider="@android:color/transparent"
-        android:dividerHeight="0dp" />
+        android:background="#EDEDED">
+        <LinearLayout
+            android:id="@+id/searchBar"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:orientation="horizontal"
+            android:layout_gravity="end">
+            <EditText
+                android:id="@+id/searchEditText"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:hint="Enter name..."
+                android:layout_weight="1"
+                />
+            <ImageButton
+                android:id="@+id/searchButton"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:src="@drawable/places_ic_search"
+                android:onClick="onClick"
+                />
+        </LinearLayout>
+
+        <ListView
+            android:id="@+id/searchResults"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:choiceMode="singleChoice"
+            android:divider="@android:color/transparent"
+            android:dividerHeight="0dp"
+            android:layout_weight="1"
+            android:background="#D0D0D0"/>
+        <ListView
+            android:id="@+id/listOfFriends"
+            android:layout_width="240dp"
+            android:layout_height="match_parent"
+            android:background="#EDEDED"
+            android:choiceMode="singleChoice"
+            android:divider="@android:color/transparent"
+            android:dividerHeight="0dp"
+            android:layout_weight="3"/>
+    </LinearLayout>
 
     <!-- sliding end-->
 
