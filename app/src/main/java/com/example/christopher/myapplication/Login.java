@@ -44,7 +44,7 @@ public class Login extends AppCompatActivity {
     SharedPreferences sessionInfo;
 
 
-
+//TODO MAKE CONTAINER FOR SEARCH BAR AND RESULTS/FRIENDS
 
 
     @Override
@@ -52,6 +52,11 @@ public class Login extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
+
+        if (this.getIntent().getExtras() != null){
+            String startupToast = this.getIntent().getExtras().getString("startuptoast", null);
+            Toast.makeText(getApplicationContext(), startupToast, Toast.LENGTH_SHORT).show();
+        }
 
         input_ID = (EditText) findViewById(R.id.emailInput);
         input_PW = (EditText) findViewById(R.id.passwordInput);
