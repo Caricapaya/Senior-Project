@@ -8,13 +8,13 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal">
         <ImageView
-            android:id="@+id/friendRequestImage"
+            android:id="@+id/friendRequestImageView"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_margin="5dp"
             android:src="@android:drawable/ic_menu_gallery"/>
         <TextView
-            android:id="@+id/friendRuestNameView"
+            android:id="@+id/friendRequestNameView"
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:gravity="center_vertical|end"

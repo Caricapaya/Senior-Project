@@ -13,6 +13,7 @@ public class Person {
     private LatLng location;
     private String deviceID;
     public Person(String n, LatLng l, String id){name = n; location = l; deviceID = id;}
+    public Person(String name, String id) {this.name = name; this.deviceID = id;}
 
     public LatLng getLocation() {
         return location;

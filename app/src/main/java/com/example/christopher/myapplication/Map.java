@@ -89,8 +89,13 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
     List<Person> friendLocations;
     Polyline destinationRoute;
 
+    List<Person> pendingRequests;
+    List<Person> searchResult;
+    List<Person> friendList;
+
     boolean friendLocationsUpdate;
     boolean firstMapUpdate;
+    boolean activeSearch;
 
     LocationReceiver receiver;
     Handler getLocationSheduler;
@@ -101,10 +106,12 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
     private final String[] navItems = {"1", "2", "3", "4", "5", "Sign Out"};
     private final String[] navItems2 = {"6", "7", "8", "9", "10","6", "7", "8", "9", "10","6", "7", "8", "9", "10"};
     private final String[] resultTest = {"CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL"};
+    private ArrayList<Person> mockRequests = new ArrayList<>();
 
     private ListView lvNavList;
     private ListView lvNavList2;
     private ListView searchResultList;
+    private  ListView friendRequestList;
     private LinearLayout friendsNavigation;
 
     //private FrameLayout flContainer;
@@ -123,9 +130,14 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         destinationRoute = null;
         firstMapUpdate = true;
         friendLocationsUpdate = false;
+        activeSearch = false;
         otherMarkers = new ArrayList<>();
         friendMarkers = new ArrayList<>();
         markerToPerson = new HashMap<>();
+
+        searchResult = new ArrayList<>();
+        pendingRequests = new ArrayList<>();
+        friendList = new ArrayList<>();
 
         sessionInfo = getSharedPreferences("sessionInfo", 0);
 
@@ -161,6 +173,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         //setContentView(R.layout.activity_map);
         lvNavList = (ListView)findViewById(R.id.lv_activity_main_nav_list_start);
         lvNavList2 = (ListView)findViewById(R.id.listOfFriends);
+        friendRequestList = (ListView) findViewById(R.id.friendRequests);
         searchResultList = (ListView)findViewById(R.id.searchResults);
 
         flContainer = (RelativeLayout) findViewById(R.id.fl_activity_main_container);
@@ -185,9 +198,22 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         lvNavList.setOnItemClickListener(new DrawerItemClickListener());
         lvNavList2.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, navItems2));
         lvNavList2.setOnItemClickListener(new DrawerItemClickListener2());
-        searchResultList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, resultTest));
+
+        friendRequestList.setAdapter(new RequestListAdapter(this, mockRequests));
+        searchResultList.setAdapter(new SearchListAdapter(this, (ArrayList<Person>) searchResult));
 
         // 슬라이딩 끝
+        mockRequests.add(new Person("Gunnar", "2001"));
+        mockRequests.add(new Person("Geir", "2002"));
+        mockRequests.add(new Person("Gilde", "2003"));
+
+        searchResult.add(new Person("Gunnar", "2001"));
+        searchResult.add(new Person("Geir", "2002"));
+        searchResult.add(new Person("Gilde", "2003"));
+
+
+
+
 
     }
 
@@ -496,8 +522,9 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         if (friendMarkers.contains(marker)){
             if (marker.equals(targetFriendMarker)){
                 AlertDialog.Builder optionDialog = new AlertDialog.Builder(this);
-                optionDialog.setTitle("Target Friend");
-                optionDialog.setMessage("Stop drawing path?");
+                String name = markerToPerson.get(marker).getName();
+                optionDialog.setTitle("Friend: " + name);
+                optionDialog.setMessage("Stop drawing path to " + name + "?");
 
                 optionDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
                     @Override
@@ -519,8 +546,10 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             }
             else{
                 AlertDialog.Builder optionDialog = new AlertDialog.Builder(this);
-                optionDialog.setTitle("Friend");
-                optionDialog.setMessage("Draw path to this friend?");
+
+                String name = markerToPerson.get(marker).getName();
+                optionDialog.setTitle("Friend: " + name);
+                optionDialog.setMessage("Draw path to " + name + "?");
 
                 optionDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
                     @Override
@@ -753,6 +782,11 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             case R.id.searchButton: {
                 EditText searchBox = (EditText) findViewById(R.id.searchEditText);
                 String searchQuery = searchBox.getText().toString();
+
+                friendSearchTask searchTask = new friendSearchTask();
+                searchTask.execute(searchQuery);
+
+
             }
         }
     }
@@ -785,8 +819,69 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         }
     }
 
+    private class friendSearchTask extends AsyncTask<String, Integer, List<Person>>{
+        JSONObject response;
 
-    //TODO implement realtime pathfinder
+        @Override
+        protected List<Person> doInBackground(String... params) {
+            Socket mySocket;
+            List<Person> people = null;
+            try{
+                InetAddress address = InetAddress.getByName("csclserver.hopto.org");
+                mySocket = new Socket();
+                mySocket.setSoTimeout(2000);
+                mySocket.connect(new InetSocketAddress(address, 50001),2000);
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+                PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
+
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("type", NetworkConstants.TYPE_SEARCH_PEOPLE);
+                jsonMessage.put("query", params[0]);
+                jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
+                printWriter.println(jsonMessage);
+                String unparsed = bufferedReader.readLine();
+                mySocket.close();
+
+                JSONParser parser = new JSONParser();
+                response = new JSONObject(unparsed);
+                people = parser.parsePeople(response);
+            }
+            catch (JSONException e){
+                e.printStackTrace();
+            }
+            catch (UnknownHostException e){
+                e.printStackTrace();
+            }
+            catch (IOException e){
+                e.printStackTrace();
+            }
+            finally {
+                Log.d("DEBUG", "END GET LOCATIONS TASK");
+                return people;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(List<Person> persons) {
+            checkSessionResponse(response);
+            Log.d("DEBUG", persons.toString());
+            Log.d("DEBUG", "SIZE: " + persons.size());
+            Log.d("DEBUG", response.toString());
+
+            if (persons == null || persons.size() == 0){
+                searchResult.clear();
+                ((SearchListAdapter) searchResultList.getAdapter()).refresh((ArrayList<Person>) searchResult);
+            }
+            else{
+                searchResult.clear();
+                searchResult.addAll(persons);
+                Log.d("DEBUG", "SIZE:" + searchResult.size());
+                ((SearchListAdapter) searchResultList.getAdapter()).refresh((ArrayList<Person>) searchResult);
+            }
+        }
+    }
+
+
     private class GetLocationsTask extends AsyncTask<String, Integer, List<Person>>{
         JSONObject response;
 
@@ -829,12 +924,11 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             }
         };
 
-        //TODO update current location and other markers at the same time
         @Override
         protected void onPostExecute(List<Person> persons) {
             checkSessionResponse(response);
             friendLocationsUpdate = true;
-            if (persons.size() > 0){
+            if (persons != null && persons.size() > 0){
                 friendLocations = persons;
             }
             else{
