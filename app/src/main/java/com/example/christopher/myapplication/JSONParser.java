@@ -124,5 +124,29 @@ class JSONParser {
         }
     }
 
+    List<Person> parsePeople(JSONObject jdata){
+        ArrayList<Person> parsedPeople = null;
+        try{
+            JSONArray people = jdata.getJSONArray("people");
+            parsedPeople = new ArrayList<>();
+            JSONObject person;
+            LatLng location;
+            String name;
+            String deviceID;
+            for (int i = 0; i < people.length(); i++) {
+                person = (JSONObject) people.get(i);
+                name = person.getString("name");
+                deviceID = person.getString("deviceID");
+                parsedPeople.add(new Person(name, deviceID));
+            }
+        }
+        catch (JSONException e){
+            e.printStackTrace();
+        }
+        finally {
+            return parsedPeople;
+        }
+    }
+
 
 }

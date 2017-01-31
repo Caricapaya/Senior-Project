@@ -13,32 +13,32 @@ import android.widget.TextView;
 import java.util.ArrayList;
 
 /**
- * Created by Christopher on 12/5/2016.
- * Code from http://stackoverflow.com/questions/14013833/populating-a-custom-listview-from-listarray
+ * Created by Christopher on 1/29/2017.
  */
-public class RequestListAdapter extends ArrayAdapter {
+
+public class SearchListAdapter extends ArrayAdapter {
     private Context context;
-    private ArrayList<Person> pendingRequests;
+    private ArrayList<Person> searchResult;
 
     private LayoutInflater myInflater;
     private boolean mNotifyOnChange = true;
 
-    public RequestListAdapter(Context cntxt, ArrayList<Person> requests){
-        super(cntxt, R.layout.friend_request_box);
+    public SearchListAdapter(Context cntxt, ArrayList<Person> srchRslt){
+        super(cntxt, R.layout.friend_search_box);
         context = cntxt;
-        pendingRequests = requests;
-        myInflater = LayoutInflater.from(cntxt);
+        myInflater = LayoutInflater.from(context);
+        searchResult = srchRslt;
     }
 
     @Override
     public int getCount() {
-        return pendingRequests.size();
+        return searchResult.size();
     }
 
     @Nullable
     @Override
     public Object getItem(int position) {
-        return pendingRequests.get(position);
+        return searchResult.get(position);
     }
 
     @Override
@@ -48,7 +48,7 @@ public class RequestListAdapter extends ArrayAdapter {
 
     @Override
     public int getPosition(Object item) {
-        return pendingRequests.indexOf(item);
+        return searchResult.indexOf(item);
     }
 
     @Override
@@ -70,9 +70,9 @@ public class RequestListAdapter extends ArrayAdapter {
             myHolder = new ViewHolder();
             switch (type){
                 case 1:
-                    convertView = myInflater.inflate(R.layout.friend_request_box, parent, false);
-                    myHolder.nameBox = (TextView) convertView.findViewById(R.id.friendRequestNameView);
-                    myHolder.profilePicture = (ImageView) convertView.findViewById(R.id.friendRequestImageView);
+                    convertView = myInflater.inflate(R.layout.friend_search_box, parent, false);
+                    myHolder.nameBox = (TextView) convertView.findViewById(R.id.searchListNameView);
+                    myHolder.profilePicture = (ImageView) convertView.findViewById(R.id.searchListImageView);
                     break;
             }
             convertView.setTag(myHolder);
@@ -80,8 +80,8 @@ public class RequestListAdapter extends ArrayAdapter {
         else{
             myHolder = (ViewHolder) convertView.getTag();
         }
-        myHolder.nameBox.setText(pendingRequests.get(position).getName());
-        myHolder.deviceID = pendingRequests.get(position).getDeviceID();
+        myHolder.nameBox.setText(searchResult.get(position).getName());
+        myHolder.deviceID = searchResult.get(position).getDeviceID();
         myHolder.pos = position;
         return convertView;
     }
@@ -105,9 +105,7 @@ public class RequestListAdapter extends ArrayAdapter {
     }
 
     public void refresh(ArrayList<Person> people){
-        pendingRequests = people;
+        searchResult = people;
         notifyDataSetChanged();
     }
-
-
 }

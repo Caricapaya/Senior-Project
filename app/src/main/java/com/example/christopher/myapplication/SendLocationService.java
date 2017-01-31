@@ -108,8 +108,7 @@ public class SendLocationService extends Service {
         }
     }
 
-
-    //TODO remove loggers and prints. stop sending location when logged out.
+    
     private class SendLocationTask extends AsyncTask<Location, Integer, Intent>{
         @Override
         protected Intent doInBackground(Location... params) {

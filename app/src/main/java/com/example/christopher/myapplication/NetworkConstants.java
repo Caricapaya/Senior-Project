@@ -11,4 +11,5 @@ public class NetworkConstants {
     public static final String TYPE_QUIT = "QUIT";
     public static final String TYPE_SIGNUP = "SIGNUP";
     public static final String TYPE_DEFAULT = "DEFAULT";
+    public static final String TYPE_SEARCH_PEOPLE = "SEARCH_PEOPLE";
 }
