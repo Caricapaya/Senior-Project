@@ -10,6 +10,7 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        multiDexEnabled true // http://stackoverflow.com/questions/33915955/android-studio-transformexception-errorexecution-failed-for-task-apptransf
     }
     buildTypes {
         release {
