@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+
+    android:orientation="vertical"
+    android:id="@+id/activity_profile"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    tools:context="com.example.christopher.myapplication.Profile"
+    android:weightSum="1">
+
+    <TextView
+        android:text="Profile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"/>
+
+
+    <ImageView
+        android:id="@+id/ProfilePicture"
+        android:layout_gravity="center"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginTop="20dp"
+        android:src="@android:drawable/ic_menu_gallery"
+        />
+
+    <Button
+        android:id="@+id/UploadButton"
+        android:layout_gravity="center"
+        android:layout_width="80dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="20dp"
+        android:text="Upload"
+        android:textSize="10dp"
+        android:contentDescription="Upload button"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:layout_marginTop="10dp">
+
+        <TextView
+            android:text="Gender"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="13dp"
+            android:id="@+id/textGender"
+            android:fontFamily="sans-serif-smallcaps"
+            android:textStyle="normal|bold"
+            android:textSize="12sp" />
+
+        <RadioGroup xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:text="Male"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="29dp"
+                android:id="@+id/radioButtonMale"
+                android:checked="false"
+                android:textSize="12sp" />
+
+            <RadioButton
+                android:text="Female"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:id="@+id/radioButtonFemale"
+                android:fontFamily="sans-serif"
+                android:textSize="12sp" />
+
+            <RadioButton
+                android:text="Reject response"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:id="@+id/radioButtonUnwilling"
+                android:fontFamily="sans-serif"
+                android:textSize="8sp" />
+        </RadioGroup>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left" >
+
+        <TextView
+            android:text="Occupation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:id="@+id/textOccupation"
+            android:textStyle="normal|bold"
+            android:fontFamily="sans-serif-smallcaps"
+            android:textSize="12sp" />
+        <RadioGroup xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <RadioButton
+                android:text="Professor"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="29dp"
+                android:id="@+id/radioButtonProfessor"
+                android:checked="false"
+                android:textSize="12sp" />
+            <RadioButton
+                android:text="Student"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:id="@+id/radioButtonStudent"
+                android:fontFamily="sans-serif"
+                android:textSize="12sp" />
+            <RadioButton
+                android:text="Other"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:id="@+id/radioButtonOther"
+                android:fontFamily="sans-serif"
+                android:textSize="12sp" />
+        </RadioGroup>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="366dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="left"
+        android:layout_weight="0.08">
+        <TextView
+            android:text="Age"
+            android:layout_width="40dp"
+            android:layout_height="wrap_content"
+            android:id="@+id/textAge"
+            android:fontFamily="sans-serif-smallcaps"
+            android:textStyle="normal|bold"
+            android:textSize="12sp" />
+        <Spinner
+            android:id="@+id/spinner_age"
+            android:layout_marginTop="1dp"
+            android:layout_marginStart="10dp"
+            android:layout_width="140dp"
+            android:layout_height="match_parent"
+            android:entries="@array/age"/>
+    </LinearLayout>
+
+
+    <TextView
+        android:layout_marginTop="15dp"
+        android:text="Interest"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/textInterest"
+        android:fontFamily="sans-serif-smallcaps"
+        android:textStyle="normal|bold"
+        android:textSize="12sp" />
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:layout_weight="0.08">
+
+        <TextView
+            android:layout_marginTop="5dp"
+            android:layout_marginStart="20dp"
+            android:text="Sports"
+            android:layout_width="50dp"
+            android:layout_height="wrap_content"
+            android:id="@+id/textSports"
+            android:fontFamily="sans-serif-smallcaps"
+            android:textStyle="normal|bold"
+            android:textSize="12sp" />
+
+        <Spinner
+            android:id="@+id/spinner_sports"
+            android:layout_marginTop="5dp"
+            android:layout_marginStart="17dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:entries="@array/age"/>
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:layout_weight="0.08">
+
+        <TextView
+            android:layout_marginTop="5dp"
+            android:layout_marginStart="20dp"
+            android:text="Music"
+            android:layout_width="50dp"
+            android:layout_height="wrap_content"
+            android:id="@+id/textMusic"
+            android:fontFamily="sans-serif-smallcaps"
+            android:textStyle="normal|bold"
+            android:textSize="12sp" />
+
+        <Spinner
+            android:id="@+id/spinner_music"
+            android:layout_marginTop="6dp"
+            android:layout_marginStart="17dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:entries="@array/age"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:layout_weight="0.08">
+        <TextView
+            android:layout_marginTop="5dp"
+            android:layout_marginStart="20dp"
+            android:text="Movie"
+            android:layout_width="50dp"
+            android:layout_height="wrap_content"
+            android:id="@+id/textMovie"
+            android:fontFamily="sans-serif-smallcaps"
+            android:textStyle="normal|bold"
+            android:textSize="12sp" />
+
+        <Spinner
+            android:id="@+id/spinner_movie"
+            android:layout_marginTop="6dp"
+            android:layout_marginStart="17dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:entries="@array/age"/>
+    </LinearLayout>
+
+
+
+    <TextView
+        android:layout_marginTop="15dp"
+        android:text="Status Message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/textStatusMessage"
+        android:fontFamily="sans-serif-smallcaps"
+        android:textStyle="normal|bold"
+        android:textSize="12sp" />
+
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="textPersonName"
+        android:text="Enter your status message"
+        android:textSize="10sp"
+        android:ems="10"
+        android:id="@+id/editText" />
+
+    <Button
+        android:layout_width="100dp"
+        android:layout_height="35dp"
+
+        android:layout_gravity="right"
+        android:text="Update"
+        android:id="@+id/updateButton"
+        android:textAllCaps="false"
+        android:onClick="onClick_update"
+        android:textSize="12sp" />
+
+</LinearLayout>
