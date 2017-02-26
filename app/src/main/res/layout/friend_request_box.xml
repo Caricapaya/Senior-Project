@@ -32,7 +32,7 @@
             android:layout_height="40dp"
             android:textSize="10dp"
             android:text="Accept"
-            android:backgroundTint="#64dd17"/>
+            android:backgroundTint="#64dd17" />
         <Button
             android:id="@+id/declineRequestButton"
             android:layout_width="wrap_content"

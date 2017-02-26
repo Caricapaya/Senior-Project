@@ -133,11 +133,18 @@ class JSONParser {
             LatLng location;
             String name;
             String deviceID;
+            Person temp;
             for (int i = 0; i < people.length(); i++) {
                 person = (JSONObject) people.get(i);
                 name = person.getString("name");
                 deviceID = person.getString("deviceID");
-                parsedPeople.add(new Person(name, deviceID));
+                temp = new Person(name, deviceID);
+                temp.setOnline(person.optBoolean("online", false));
+                temp.setVisible(person.optBoolean("visible", false));
+                if (temp.isOnline() && temp.isVisible()){
+                    temp.setLocation(new LatLng(person.getJSONObject("location").getDouble("latitude"), person.getJSONObject("location").getDouble("longitude")));
+                }
+                parsedPeople.add(temp);
             }
         }
         catch (JSONException e){

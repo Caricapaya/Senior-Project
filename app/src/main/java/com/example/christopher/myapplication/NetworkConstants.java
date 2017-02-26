@@ -12,4 +12,8 @@ public class NetworkConstants {
     public static final String TYPE_SIGNUP = "SIGNUP";
     public static final String TYPE_DEFAULT = "DEFAULT";
     public static final String TYPE_SEARCH_PEOPLE = "SEARCH_PEOPLE";
+    public static final String TYPE_SEND_REQUEST = "SEND_REQUEST";
+    public static final String TYPE_GET_REQUESTS = "GET_REQUESTS";
+    public static final String TYPE_RESPOND_REQUEST = "RESPOND_REQUEST";
+    public static final String TYPE_GET_FRIENDS = "GET_FRIENDS";
 }
