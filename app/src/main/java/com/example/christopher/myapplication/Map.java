@@ -103,7 +103,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
 
     SharedPreferences sessionInfo;
     // Sliding menu
-    private final String[] navItems = {"1", "2", "3", "4", "5", "Sign Out"};
+    private final String[] navItems = {"Profile", "2", "3", "4", "5", "Sign Out"};
     private final String[] navItems2 = {"6", "7", "8", "9", "10","6", "7", "8", "9", "10","6", "7", "8", "9", "10"};
     private final String[] resultTest = {"CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL"};
     private ArrayList<Person> mockRequests = new ArrayList<>();
@@ -239,7 +239,11 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         public void onItemClick(AdapterView<?> adapter, View view, int position, long id) {
             switch (position) {
                 case 0:
-                    flContainer.setBackgroundColor(Color.parseColor("#A52A2A"));
+                    //flContainer.setBackgroundColor(Color.parseColor("#A52A2A"));
+                    String updateMessage = "First drawer item selected";
+                    Toast.makeText(Map.this,updateMessage,Toast.LENGTH_SHORT).show();
+                    Intent intent_Profile = new Intent(getApplicationContext(), Profile.class);
+                    startActivity(intent_Profile);
                     break;
                 case 1:
                     flContainer.setBackgroundColor(Color.parseColor("#5F9EA0"));
