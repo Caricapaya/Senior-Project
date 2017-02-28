@@ -1123,6 +1123,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         }
     }
 
+    //Turn jsonstring into jsonobject and pass to function above
     public void checkSessionResponse(String serverMessage){
         if (serverMessage == null){
             return;

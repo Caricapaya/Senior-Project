@@ -14,4 +14,7 @@ public class ApplicationConstants {
     public static final int SERVER_TIMEOUT = 2;
     public static final int SERVER_TIMEOUT_MS = SERVER_TIMEOUT*1000;
 
+    public static final int ACTIVITY_SWITCH_DELAY = 2;
+    public static final int ACTIVITY_SWITCH_DELAY_MS = ACTIVITY_SWITCH_DELAY*1000;
+
 }
