@@ -16,4 +16,6 @@ public class NetworkConstants {
     public static final String TYPE_GET_REQUESTS = "GET_REQUESTS";
     public static final String TYPE_RESPOND_REQUEST = "RESPOND_REQUEST";
     public static final String TYPE_GET_FRIENDS = "GET_FRIENDS";
+    public static final String TYPE_UPDATE_PROFILE = "UPDATE_PROFILE";
+    public static final String TYPE_GET_PROFILE = "GET_PROFILE";
 }
