@@ -33,7 +33,17 @@
                     android:text="Profile"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center"/>
+                    android:layout_marginBottom="15dp"
+                    android:layout_gravity="center"
+                    android:fontFamily="cursive"
+                    android:textSize="24sp"
+                    android:textStyle="normal|bold"
+                    android:textColor="@drawable/ic_add_black_24px" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:background="@android:color/holo_green_dark"/>
 
 
                 <ImageView
@@ -54,6 +64,13 @@
                     android:text="Upload"
                     android:textSize="10dp"
                     android:contentDescription="Upload button"/>
+
+
+                <View
+                    android:layout_marginTop="20dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@android:color/darker_gray"/>
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -134,6 +151,12 @@
                         android:id="@+id/editLastName" />
 
                 </LinearLayout>
+
+                <View
+                    android:layout_marginTop="10dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@android:color/darker_gray"/>
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -253,6 +276,11 @@
                         android:entries="@array/age"/>
                 </LinearLayout>
 
+                <View
+                    android:layout_marginTop="20dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@android:color/darker_gray"/>
 
                 <TextView
                     android:layout_marginTop="25dp"
@@ -344,7 +372,11 @@
                         android:entries="@array/age"/>
                 </LinearLayout>
 
-
+                <View
+                    android:layout_marginTop="20dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@android:color/darker_gray"/>
 
                 <TextView
                     android:layout_marginTop="30dp"
@@ -366,15 +398,23 @@
                     android:ems="10"
                     android:id="@+id/editText" />
 
+                <View
+                    android:layout_marginTop="20dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:background="@android:color/holo_orange_dark"/>
+
                 <Button
                     android:layout_width="100dp"
                     android:layout_height="45dp"
+                    android:layout_marginTop="5dp"
                     android:layout_marginBottom="15dp"
                     android:layout_gravity="right"
                     android:text="Update"
                     android:id="@+id/updateButton"
                     android:textAllCaps="false"
                     android:onClick="onClick_update"
+                    android:background="@color/wallet_holo_blue_light"
                     android:textSize="12sp" />
 
             </LinearLayout>
