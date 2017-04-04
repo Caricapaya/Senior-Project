@@ -112,7 +112,7 @@ public class Register extends AppCompatActivity {
                 jsonMessage.put("username", user);
                 jsonMessage.put("password", pass);
                 jsonMessage.put("gender", gender);
-                jsonMessage.put("status", status);
+                jsonMessage.put("occupation", status);
                 printWriter.println(jsonMessage.toString());
                 String serverResponse = bufferedReader.readLine();
                 response = new JSONObject(serverResponse);

@@ -12,8 +12,10 @@ public class Person {
     private String name;
     private LatLng location;
     private String deviceID;
-    public Person(String n, LatLng l, String id){name = n; location = l; deviceID = id;}
-    public Person(String name, String id) {this.name = name; this.deviceID = id;}
+    private boolean isOnline;
+    private boolean isVisible;
+    public Person(String n, LatLng l, String id){name = n; location = l; deviceID = id; isOnline = false;}
+    public Person(String name, String id) {this.name = name; this.deviceID = id; isOnline = false;}
 
     public LatLng getLocation() {
         return location;
@@ -36,4 +38,27 @@ public class Person {
             return false;
         }
     }
+
+    public void setOnline(boolean online) {
+        isOnline = online;
+    }
+
+    public boolean isOnline() {
+        return isOnline;
+    }
+
+    public boolean samePerson(Person prsn){
+       return prsn.deviceID.equals(deviceID);
+    }
+
+    public boolean isVisible() {
+        return isVisible;
+    }
+
+    public void setVisible(boolean vs){
+        isVisible = vs;
+    }
+
+    public void setLocation(LatLng loc){location = loc;}
+
 }

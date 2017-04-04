@@ -175,6 +175,7 @@
                         android:textSize="12sp" />
 
                     <RadioGroup xmlns:android="http://schemas.android.com/apk/res/android"
+                        android:id="@+id/radioGroupGender"
                         android:layout_width="fill_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="5dp"
@@ -223,6 +224,7 @@
                         android:fontFamily="sans-serif-smallcaps"
                         android:textSize="12sp" />
                     <RadioGroup xmlns:android="http://schemas.android.com/apk/res/android"
+                        android:id="@+id/radioGroupOccupation"
                         android:layout_width="fill_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
@@ -396,7 +398,7 @@
                     android:hint="Enter your status message"
                     android:textSize="11sp"
                     android:ems="10"
-                    android:id="@+id/editText" />
+                    android:id="@+id/editStatusMessage" />
 
                 <View
                     android:layout_marginTop="20dp"

@@ -91,14 +91,14 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
 
     List<Person> pendingRequests;
     List<Person> searchResult;
-    List<Person> friendList;
+    List<Person> addedFriends;
 
     boolean friendLocationsUpdate;
     boolean firstMapUpdate;
     boolean activeSearch;
 
     LocationReceiver receiver;
-    Handler getLocationSheduler;
+    Handler getLocationScheduler;
     TimedLocationGetter getLocationRoutine;
 
     SharedPreferences sessionInfo;
@@ -108,8 +108,11 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
     private final String[] resultTest = {"CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL","CARL"};
     private ArrayList<Person> mockRequests = new ArrayList<>();
 
+    public static final String ONLINE_RED = "#E52800";
+    public static final String ONLINE_GREEN = "#42FC00";
+
     private ListView lvNavList;
-    private ListView lvNavList2;
+    private ListView friendList;
     private ListView searchResultList;
     private  ListView friendRequestList;
     private LinearLayout friendsNavigation;
@@ -137,7 +140,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
 
         searchResult = new ArrayList<>();
         pendingRequests = new ArrayList<>();
-        friendList = new ArrayList<>();
+        addedFriends = new ArrayList<>();
 
         sessionInfo = getSharedPreferences("sessionInfo", 0);
 
@@ -163,7 +166,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         registerReceiver(receiver, filter);*/
 
         startService(new Intent(this, SendLocationService.class));
-        getLocationSheduler = new Handler();
+        getLocationScheduler = new Handler();
 
         setUpMap();
 
@@ -172,7 +175,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         //setContentView(R.layout.activity_slide_menu);
         //setContentView(R.layout.activity_map);
         lvNavList = (ListView)findViewById(R.id.lv_activity_main_nav_list_start);
-        lvNavList2 = (ListView)findViewById(R.id.listOfFriends);
+        friendList = (ListView)findViewById(R.id.listOfFriends);
         friendRequestList = (ListView) findViewById(R.id.friendRequests);
         searchResultList = (ListView)findViewById(R.id.searchResults);
 
@@ -196,11 +199,11 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         dlDrawer = (DrawerLayout)findViewById(R.id.activity_map);
         lvNavList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, navItems));
         lvNavList.setOnItemClickListener(new DrawerItemClickListener());
-        lvNavList2.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, navItems2));
-        lvNavList2.setOnItemClickListener(new DrawerItemClickListener2());
+        friendList.setAdapter(new FriendListAdapter(this, mockRequests));
+        friendList.setOnItemClickListener(new DrawerItemClickListener2());
 
-        friendRequestList.setAdapter(new RequestListAdapter(this, mockRequests));
-        searchResultList.setAdapter(new SearchListAdapter(this, (ArrayList<Person>) searchResult));
+        friendRequestList.setAdapter(new RequestListAdapter(this, mockRequests, Map.this));
+        searchResultList.setAdapter(new SearchListAdapter(this, (ArrayList<Person>) searchResult, Map.this));
 
         // 슬라이딩 끝
         mockRequests.add(new Person("Gunnar", "2001"));
@@ -306,7 +309,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
 
         @Override
         public void onItemClick(AdapterView<?> adapter, View view, int position, long id) {
-            switch (position) {
+            /*switch (position) {
                 case 0:
                     flContainer.setBackgroundColor(Color.parseColor("#A52A2A"));
                     break;
@@ -322,8 +325,11 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 case 4:
                     flContainer.setBackgroundColor(Color.parseColor("#DAA520"));
                     break;
-            }
-            dlDrawer.closeDrawer(lvNavList2);
+            }*/
+            Person temp = (Person) adapter.getItemAtPosition(position);
+            temp.setOnline(!temp.isOnline());
+            ((FriendListAdapter) adapter.getAdapter()).notifyDataSetChanged();
+            //dlDrawer.closeDrawer(friendList);
 
         }
     }
@@ -431,6 +437,9 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                             Log.d("debug", "target now has value");
                         }
                         for (Person person : friendLocations){
+                            if (!person.isVisible() || !person.isOnline()){
+                                continue;
+                            }
                             String deviceID = person.getDeviceID();
                             String name = person.getName();
                             MarkerOptions markerOptions = new MarkerOptions();
@@ -787,18 +796,24 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 EditText searchBox = (EditText) findViewById(R.id.searchEditText);
                 String searchQuery = searchBox.getText().toString();
 
-                friendSearchTask searchTask = new friendSearchTask();
-                searchTask.execute(searchQuery);
-
-
+                if (searchQuery.length() == 0){
+                    searchResult.clear();
+                    ((SearchListAdapter) searchResultList.getAdapter()).refresh((ArrayList<Person>) searchResult);
+                }
+                else{
+                    friendSearchTask searchTask = new friendSearchTask();
+                    searchTask.execute(searchQuery);
+                }
             }
         }
     }
 
     private class TimedLocationGetter implements Runnable{
         private volatile boolean isCancelled;
+        int ticksToGetRequest;
         public TimedLocationGetter(){
             isCancelled = false;
+            ticksToGetRequest = (int) Math.ceil(ApplicationConstants.SEND_LOCATION_FREQUENCY / ApplicationConstants.GET_REQUESTS_FREQUENCY);
         }
 
         @Override
@@ -807,19 +822,144 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 if (isCancelled){
                     return;
                 }
-                GetLocationsTask getLocationsTask = new GetLocationsTask();
-                getLocationsTask.execute("");
+                ticksToGetRequest--;
+                if (ticksToGetRequest < 1){
+                    ticksToGetRequest = (int) Math.ceil(ApplicationConstants.GET_REQUESTS_FREQUENCY / ApplicationConstants.GET_LOCATIONS_FREQUENCY);
+                    GetFriendRequestsTask getFriendRequestsTask = new GetFriendRequestsTask();
+                    getFriendRequestsTask.execute("");
+                }
+                //GetLocationsTask getLocationsTask = new GetLocationsTask();
+                //getLocationsTask.execute("");
+                new GetFriendsTask().execute("");
             }
             finally {
                 if (isCancelled){
                     return;
                 }
-                 getLocationSheduler.postDelayed(this, 5000);
+                 getLocationScheduler.postDelayed(this, ApplicationConstants.GET_LOCATIONS_FREQUENCY_MS);
             }
         }
 
         public void cancel(){
             isCancelled = true;
+        }
+    }
+
+    private class GetFriendsTask extends AsyncTask<String, Integer, List<Person>>{
+        JSONObject response;
+
+        protected List<Person> doInBackground(String... params) {
+            Socket mySocket;
+            List<Person> people = null;
+            try {
+                InetAddress address = InetAddress.getByName("csclserver.hopto.org");
+                mySocket = new Socket();
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001), ApplicationConstants.SERVER_TIMEOUT_MS);
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+                PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
+
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("type", NetworkConstants.TYPE_GET_FRIENDS);
+                jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
+                printWriter.println(jsonMessage);
+                String unparsed = bufferedReader.readLine();
+                mySocket.close();
+
+                JSONParser parser = new JSONParser();
+                response = new JSONObject(unparsed);
+                people = parser.parsePeople(response);
+            }
+            catch (JSONException e) {
+                e.printStackTrace();
+            }
+            catch (UnknownHostException e) {
+                e.printStackTrace();
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+            finally {
+                return people;
+            }
+        }
+
+        //TODO fix parser for locations
+        @Override
+        protected void onPostExecute(List<Person> persons) {
+            checkSessionResponse(response);
+            friendLocationsUpdate = true;
+
+            if (persons == null || persons.size() == 0){
+                friendLocations = null;
+                return;
+            }
+            else{
+                addedFriends = persons;
+                friendLocations = persons;
+                ((FriendListAdapter) friendList.getAdapter()).refresh((ArrayList<Person>) persons);
+            }
+        }
+    }
+
+    private class GetFriendRequestsTask extends AsyncTask<String, Integer, List<Person>>{
+        JSONObject response;
+
+        @Override
+        protected List<Person> doInBackground(String... params) {
+            Socket mySocket;
+            List<Person> people = null;
+            try{
+                InetAddress address = InetAddress.getByName("csclserver.hopto.org");
+                mySocket = new Socket();
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001),ApplicationConstants.SERVER_TIMEOUT_MS);
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+                PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
+
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("type", NetworkConstants.TYPE_GET_REQUESTS);
+                jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
+                printWriter.println(jsonMessage);
+                String unparsed = bufferedReader.readLine();
+                mySocket.close();
+
+                JSONParser parser = new JSONParser();
+                response = new JSONObject(unparsed);
+                people = parser.parsePeople(response);
+            }
+            catch (JSONException e){
+                e.printStackTrace();
+            }
+            catch (UnknownHostException e){
+                e.printStackTrace();
+            }
+            catch (IOException e){
+                e.printStackTrace();
+            }
+            finally {
+                return people;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(List<Person> persons) {
+            checkSessionResponse(response);
+
+            if (persons == null){
+                return;
+            }
+
+            //Add list of pending requests from server, replace duplicates
+            for (Person prsn1 : persons){
+                for (Person prsn2 : pendingRequests){
+                    if (prsn1.samePerson(prsn2)){
+                        pendingRequests.remove(prsn2);
+                    }
+                }
+                pendingRequests.add(prsn1);
+            }
+            ((RequestListAdapter) friendRequestList.getAdapter()).refresh((ArrayList<Person>) pendingRequests);
         }
     }
 
@@ -868,9 +1008,6 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         @Override
         protected void onPostExecute(List<Person> persons) {
             checkSessionResponse(response);
-            Log.d("DEBUG", persons.toString());
-            Log.d("DEBUG", "SIZE: " + persons.size());
-            Log.d("DEBUG", response.toString());
 
             if (persons == null || persons.size() == 0){
                 searchResult.clear();
@@ -879,7 +1016,6 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             else{
                 searchResult.clear();
                 searchResult.addAll(persons);
-                Log.d("DEBUG", "SIZE:" + searchResult.size());
                 ((SearchListAdapter) searchResultList.getAdapter()).refresh((ArrayList<Person>) searchResult);
             }
         }
@@ -987,6 +1123,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         }
     }
 
+    //Turn jsonstring into jsonobject and pass to function above
     public void checkSessionResponse(String serverMessage){
         if (serverMessage == null){
             return;
@@ -1003,7 +1140,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
     protected void onPause() {
         super.onPause();
         unregisterReceiver(receiver);
-        getLocationSheduler.removeCallbacks(getLocationRoutine);
+        getLocationScheduler.removeCallbacks(getLocationRoutine);
         getLocationRoutine.cancel();
     }
 
@@ -1022,6 +1159,6 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         registerReceiver(receiver, filter);
 
         getLocationRoutine = new TimedLocationGetter();
-        getLocationSheduler.postDelayed(getLocationRoutine, 0);
+        getLocationScheduler.postDelayed(getLocationRoutine, 0);
     }
 }

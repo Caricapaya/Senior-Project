@@ -86,10 +86,8 @@ public class SendLocationService extends Service {
             intent.putExtra("longitude", location.getLongitude());
             sendBroadcast(intent);
 
-            Log.d("DEBUG", "TRY NEW TASK");
             SendLocationTask sendLocationTask = new SendLocationTask();
             sendLocationTask.execute(location);
-            Log.d("DEBUG", "AFTER TRY NEW TASK");
         }
 
         @Override
