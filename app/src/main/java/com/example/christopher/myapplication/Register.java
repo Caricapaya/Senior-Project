@@ -42,8 +42,8 @@ public class Register extends AppCompatActivity {
         input_ID = (EditText) findViewById(R.id.emailInput);
         input_PW = (EditText) findViewById(R.id.passwordInput);
         input_CPW = (EditText) findViewById(R.id.passwordInputConfirm);
-        input_gender = (RadioGroup) findViewById(R.id.genderGroup);
-        input_status = (RadioGroup) findViewById(R.id.occupationGroup);
+        //input_gender = (RadioGroup) findViewById(R.id.genderGroup);
+        //input_status = (RadioGroup) findViewById(R.id.occupationGroup);
 
         preferences = getSharedPreferences("setting", 0);
         editor = preferences.edit();
@@ -87,6 +87,12 @@ public class Register extends AppCompatActivity {
     public void onClick_back (View v){
         Intent intent_toLogin = new Intent(getApplicationContext(), Login.class);
         startActivity(intent_toLogin);
+    }
+
+    // Just for testing Next button
+    public void onClick_next (View v){
+        Intent intent_toRegister2 = new Intent(getApplicationContext(), Register2.class);
+        startActivity(intent_toRegister2);
     }
 
     private class RegisterTask extends AsyncTask<String, Integer, JSONObject>{
