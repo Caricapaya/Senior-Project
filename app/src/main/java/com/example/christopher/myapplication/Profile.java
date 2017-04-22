@@ -1,8 +1,10 @@
 package com.example.christopher.myapplication;
 
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
@@ -64,6 +66,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.Manifest;
 // 이미지 업로드를 위한 노력1 닫음
 
 
@@ -176,8 +179,28 @@ public class Profile extends AppCompatActivity {
     }
 
     // 이미지 업로드를 위한 노력4 열음
-    public void onClick_upload (View v){
+    // This is getting an image from the Gallery app
+    public void onClick_upload_gallery (View v){
         doTakeAlbumAction();
+    }
+
+    // This is getting an image from the Camera app
+    // http://stackoverflow.com/questions/33244500/android-6-revoked-permissions-checked-as-granted
+    public void onClick_upload_camera (View v){
+        // Check permission for CAMERA
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Check Permissions Now
+            // Callback onRequestPermissionsResult interceptado na Activity MainActivity
+            ActivityCompat.requestPermissions(this,
+                    new String[]{android.Manifest.permission.CAMERA},
+                    Profile.PICK_FROM_CAMERA);
+
+            doTakePhotoAction();
+        } else {
+            // permission has been granted, continue as usual
+            doTakePhotoAction();
+        }
     }
     // 이미지 업로드를 위한 노력4 닫음
 
