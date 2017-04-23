@@ -14,8 +14,9 @@ public class Person {
     private String deviceID;
     private boolean isOnline;
     private boolean isVisible;
-    public Person(String n, LatLng l, String id){name = n; location = l; deviceID = id; isOnline = false;}
-    public Person(String name, String id) {this.name = name; this.deviceID = id; isOnline = false;}
+    private String areaName;
+    public Person(String n, LatLng l, String id){name = n; location = l; deviceID = id; isOnline = false; areaName = ""; }
+    public Person(String name, String id) {this.name = name; this.deviceID = id; isOnline = false; areaName = ""; }
 
     public LatLng getLocation() {
         return location;
@@ -57,6 +58,14 @@ public class Person {
 
     public void setVisible(boolean vs){
         isVisible = vs;
+    }
+
+    public String getAreaName(){
+        return areaName;
+    }
+
+    public void setAreaName(String areaName) {
+        this.areaName = areaName;
     }
 
     public void setLocation(LatLng loc){location = loc;}

@@ -132,6 +132,7 @@ public class Profile extends AppCompatActivity {
         spinnerMovie.setAdapter(adapterLocalMovie);
 
 
+        //get UI elements
         editFirstName = (EditText) findViewById(R.id.editFirstName);
         editMiddleName = (EditText) findViewById(R.id.editMiddleName);
         editLastName = (EditText) findViewById(R.id.editLastName);
@@ -154,6 +155,7 @@ public class Profile extends AppCompatActivity {
         //startActivity(intent_toLogin);
     }
 
+    //function that attempts to request a user profile update on server
     public void onClick_update (View v){
         //Place profile information in jsonobject
         JSONObject newProfileInfo = new JSONObject();
@@ -179,6 +181,8 @@ public class Profile extends AppCompatActivity {
         new UpdateProfileTask().execute(newProfileInfo);
     }
 
+
+    //function that sends a request to update user profile to the server
     private class UpdateProfileTask extends AsyncTask<JSONObject, Integer, String>{
         JSONObject response;
         SharedPreferences sessionInfo = getSharedPreferences("sessionInfo", 0);
@@ -189,6 +193,7 @@ public class Profile extends AppCompatActivity {
             Socket mySocket;
             String serverMessage = null;
             try{
+                //prepare socket IO
                 InetAddress address = InetAddress.getByName("csclserver.hopto.org");
                 mySocket = new Socket();
                 mySocket.setSoTimeout(2000);
@@ -196,13 +201,20 @@ public class Profile extends AppCompatActivity {
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
 
+                //prepare request to server with new profile info
                 JSONObject jsonMessage = new JSONObject();
                 jsonMessage.put("type", NetworkConstants.TYPE_UPDATE_PROFILE);
                 jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
                 jsonMessage.put("person", newProfileInfo);
+
+                //send request
                 printWriter.println(jsonMessage);
+
+                //read response
                 String unparsed = bufferedReader.readLine();
                 mySocket.close();
+
+                //turn response string into jsonobject and return "response" value
                 response = new JSONObject(unparsed);
                 serverMessage = response.optString("response", null);
 
@@ -223,8 +235,10 @@ public class Profile extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(String s) {
+            //check if session is valid
             checkSessionResponse(response);
 
+            //acknowledge profile update in UI
             if (s != null){
                 Toast.makeText(getBaseContext(), s, Toast.LENGTH_SHORT).show();
             }
@@ -232,6 +246,7 @@ public class Profile extends AppCompatActivity {
                 Toast.makeText(getBaseContext(), "Profile Updated!", Toast.LENGTH_SHORT).show();
             }
 
+            //create object that switches to main activity
             Runnable r = new Runnable() {
                 @Override
                 public void run() {
@@ -239,10 +254,12 @@ public class Profile extends AppCompatActivity {
                 }
             };
 
+            //run this object after a brief delay
             new Handler().postDelayed(r, ApplicationConstants.ACTIVITY_SWITCH_DELAY_MS);
         }
     }
 
+    //Request profile info of current user from server
     private class getProfileInfoTask extends AsyncTask<String, Integer, JSONObject>{
         SharedPreferences sessionInfo = getSharedPreferences("sessionInfo", 0);
         @Override
@@ -250,6 +267,7 @@ public class Profile extends AppCompatActivity {
             Socket mySocket;
             JSONObject response = null;
             try{
+                //prepare socket IO
                 InetAddress address = InetAddress.getByName("csclserver.hopto.org");
                 mySocket = new Socket();
                 mySocket.setSoTimeout(2000);
@@ -257,12 +275,19 @@ public class Profile extends AppCompatActivity {
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
 
+                //set request message
                 JSONObject jsonMessage = new JSONObject();
                 jsonMessage.put("type", NetworkConstants.TYPE_GET_PROFILE);
                 jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
+
+                //send request
                 printWriter.println(jsonMessage);
+
+                //read response
                 String unparsed = bufferedReader.readLine();
                 mySocket.close();
+
+                //create jsonobject from response
                 response = new JSONObject(unparsed);
 
             }
@@ -311,6 +336,7 @@ public class Profile extends AppCompatActivity {
         }
     }
 
+    //function that sets the text in a given EditText UI item if the json profile has the corresponding field
     private void setIfExists(JSONObject sProfile, String name, EditText edt){
         String field = sProfile.optString(name, null);
         if (field != null){
@@ -351,14 +377,17 @@ public class Profile extends AppCompatActivity {
         }
     }
 
+    //set drop down lists for interests
     private void setInterestSpinner(JSONObject sProfile, Spinner spin){
         try{
             JSONArray interestTags = sProfile.getJSONArray("interests");
             Log.d("PROFILE", "INTERESTS: " + interestTags.toString());
             for (int j = 0; j < interestTags.length(); j++) {
+                //get one of the interest tags
                 String interestTag = (String) interestTags.get(j);
                 for (int i = 0; i < spin.getCount(); i++) {
                     if (spin.getItemAtPosition(i).toString().equalsIgnoreCase(interestTag)) {
+                        //set preselected drop down option if it matches interest
                         spin.setSelection(i);
                         return;
                     }
@@ -372,18 +401,21 @@ public class Profile extends AppCompatActivity {
     }
 
 
+    //check if user session is still active. Return to login page if not
     public void checkSessionResponse(JSONObject serverMessage){
         if (serverMessage!= null){
             try{
                 String sessionStatus = serverMessage.getString("sessionstatus");
                 if (sessionStatus.equals("invalid")){
                     Bundle bundle = new Bundle();
+                    //message to show on return to login
                     bundle.putString("startuptoast", "Unknown session identifier");
                     stopService(new Intent(this, SendLocationService.class));
                     startActivity(new Intent(getApplicationContext(), Login.class).putExtras(bundle));
                 }
                 else if (sessionStatus.equals("timeout")){
                     Bundle bundle = new Bundle();
+                    //message to show on return to login
                     bundle.putString("startuptoast", "Session timed out, please log in again");
                     stopService(new Intent(this, SendLocationService.class));
                     startActivity(new Intent(getApplicationContext(), Login.class).putExtras(bundle));
@@ -439,6 +471,7 @@ public class Profile extends AppCompatActivity {
         }
     }
 
+    //put info from ui elements into jsonarray
     private void putInfo(JSONArray nProfile, String name, Object uiItem){
         if (uiItem instanceof EditText){
             EditText edtxt = (EditText) uiItem;

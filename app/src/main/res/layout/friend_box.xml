@@ -13,13 +13,28 @@
             android:layout_height="40dp"
             android:layout_margin="5dp"
             android:src="@android:drawable/ic_menu_gallery"/>
-        <TextView
-            android:id="@+id/friendListNameView"
+        <LinearLayout
             android:layout_width="140dp"
-            android:layout_height="match_parent"
-            android:gravity="center_vertical|start"
-            android:paddingEnd="5dp"
-            android:text="PLACEHOLDERNAME"/>
+            android:layout_height="50dp"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/friendListNameView"
+                android:layout_width="140dp"
+                android:layout_height="30dp"
+                android:gravity="center_vertical|start"
+                android:paddingEnd="5dp"
+                android:text="PLACEHOLDERNAME"/>
+            <TextView
+                android:id="@+id/friendListAreaView"
+                android:textSize="12sp"
+                android:layout_width="wrap_content"
+                android:layout_height="20dp"
+                android:textColor="@android:color/darker_gray"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="" />
+        </LinearLayout>
+
 
         <ImageView
             android:layout_width="20dp"
@@ -29,4 +44,5 @@
             android:id="@+id/friendListOnlineIndicator"
             android:tint="#E52800"/>
     </LinearLayout>
+
 </LinearLayout>

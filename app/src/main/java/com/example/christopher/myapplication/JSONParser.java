@@ -125,6 +125,7 @@ class JSONParser {
     }
 
     List<Person> parsePeople(JSONObject jdata){
+        Log.d("DEBUG", "parsePeople: " + jdata);
         ArrayList<Person> parsedPeople = null;
         try{
             JSONArray people = jdata.getJSONArray("people");
@@ -141,6 +142,9 @@ class JSONParser {
                 temp = new Person(name, deviceID);
                 temp.setOnline(person.optBoolean("online", false));
                 temp.setVisible(person.optBoolean("visible", false));
+                if (person.has("location")){
+                    temp.setAreaName(person.getJSONObject("location").getString("name"));
+                }
                 if (temp.isOnline() && temp.isVisible()){
                     temp.setLocation(new LatLng(person.getJSONObject("location").getDouble("latitude"), person.getJSONObject("location").getDouble("longitude")));
                 }

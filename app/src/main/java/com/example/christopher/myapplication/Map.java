@@ -1008,12 +1008,14 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         @Override
         protected void onPostExecute(List<Person> persons) {
             checkSessionResponse(response);
+            Log.d("DEBUG", "onPostExecute: size = " + persons.size());
 
             if (persons == null || persons.size() == 0){
                 searchResult.clear();
                 ((SearchListAdapter) searchResultList.getAdapter()).refresh((ArrayList<Person>) searchResult);
             }
             else{
+
                 searchResult.clear();
                 searchResult.addAll(persons);
                 ((SearchListAdapter) searchResultList.getAdapter()).refresh((ArrayList<Person>) searchResult);

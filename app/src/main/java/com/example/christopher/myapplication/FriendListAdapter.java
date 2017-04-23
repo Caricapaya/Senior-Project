@@ -25,7 +25,7 @@ public class FriendListAdapter extends ArrayAdapter {
     private boolean mNotifyOnChange = true;
 
     public FriendListAdapter(Context cntxt, ArrayList<Person> frnds){
-        super(cntxt, R.layout.friend_search_box);
+        super(cntxt, R.layout.friend_box);
         context = cntxt;
         myInflater = LayoutInflater.from(context);
         friends = frnds;
@@ -73,6 +73,7 @@ public class FriendListAdapter extends ArrayAdapter {
                 case 1:
                     convertView = myInflater.inflate(R.layout.friend_box, parent, false);
                     myHolder.nameBox = (TextView) convertView.findViewById(R.id.friendListNameView);
+                    myHolder.areaBox = (TextView) convertView.findViewById(R.id.friendListAreaView);
                     myHolder.profilePicture = (ImageView) convertView.findViewById(R.id.friendListImageView);
                     myHolder.onlineStatus = (ImageView) convertView.findViewById(R.id.friendListOnlineIndicator);
                     break;
@@ -86,6 +87,7 @@ public class FriendListAdapter extends ArrayAdapter {
         myHolder.deviceID = friends.get(position).getDeviceID();
         myHolder.pos = position;
         myHolder.isOnline = friends.get(position).isOnline();
+        myHolder.areaBox.setText(friends.get(position).getAreaName());
         if (myHolder.isOnline) {
             myHolder.onlineStatus.setColorFilter(Color.parseColor(Map.ONLINE_GREEN));
         }
@@ -98,6 +100,7 @@ public class FriendListAdapter extends ArrayAdapter {
     static class ViewHolder{
         ImageView profilePicture;
         TextView nameBox;
+        TextView areaBox;
         ImageView onlineStatus;
         String deviceID;
         boolean isOnline;
