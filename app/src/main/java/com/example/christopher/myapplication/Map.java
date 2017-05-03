@@ -17,10 +17,12 @@ import android.os.PersistableBundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.util.SimpleArrayMap;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.SparseArray;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -45,6 +47,7 @@ import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -114,7 +117,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
     private ListView lvNavList;
     private ListView friendList;
     private ListView searchResultList;
-    private  ListView friendRequestList;
+    private ListView friendRequestList;
     private LinearLayout friendsNavigation;
 
     //private FrameLayout flContainer;
@@ -122,6 +125,10 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
 
     private DrawerLayout dlDrawer;
     // sliding menu done
+
+
+    //profile image thumbnail cache
+    private SparseArray<Bitmap> imageThumbnailCache;
 
 
     @Override
@@ -137,6 +144,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         otherMarkers = new ArrayList<>();
         friendMarkers = new ArrayList<>();
         markerToPerson = new HashMap<>();
+        imageThumbnailCache = new SparseArray<>();
 
         searchResult = new ArrayList<>();
         pendingRequests = new ArrayList<>();
@@ -199,20 +207,16 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         dlDrawer = (DrawerLayout)findViewById(R.id.activity_map);
         lvNavList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, navItems));
         lvNavList.setOnItemClickListener(new DrawerItemClickListener());
-        friendList.setAdapter(new FriendListAdapter(this, mockRequests));
-        friendList.setOnItemClickListener(new DrawerItemClickListener2());
+        friendList.setAdapter(new FriendListAdapter(this, (ArrayList<Person>) addedFriends, imageThumbnailCache));
+        //friendList.setOnItemClickListener(new DrawerItemClickListener2());
 
-        friendRequestList.setAdapter(new RequestListAdapter(this, mockRequests, Map.this));
-        searchResultList.setAdapter(new SearchListAdapter(this, (ArrayList<Person>) searchResult, Map.this));
+        friendRequestList.setAdapter(new RequestListAdapter(this, (ArrayList<Person>) pendingRequests, Map.this, imageThumbnailCache));
+        searchResultList.setAdapter(new SearchListAdapter(this, (ArrayList<Person>) searchResult, Map.this, imageThumbnailCache));
 
         // 슬라이딩 끝
         mockRequests.add(new Person("Gunnar", "2001"));
         mockRequests.add(new Person("Geir", "2002"));
         mockRequests.add(new Person("Gilde", "2003"));
-
-        searchResult.add(new Person("Gunnar", "2001"));
-        searchResult.add(new Person("Geir", "2002"));
-        searchResult.add(new Person("Gilde", "2003"));
 
 
 
@@ -240,8 +244,8 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             switch (position) {
                 case 0:
                     //flContainer.setBackgroundColor(Color.parseColor("#A52A2A"));
-                    String updateMessage = "First drawer item selected";
-                    Toast.makeText(Map.this,updateMessage,Toast.LENGTH_SHORT).show();
+                    //String updateMessage = "First drawer item selected";
+                    //Toast.makeText(Map.this,updateMessage,Toast.LENGTH_SHORT).show();
                     Intent intent_Profile = new Intent(getApplicationContext(), Profile.class);
                     startActivity(intent_Profile);
                     break;
@@ -279,8 +283,8 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             try{
                 InetAddress address = InetAddress.getByName("csclserver.hopto.org");
                 mySocket = new Socket();
-                mySocket.setSoTimeout(2000);
-                mySocket.connect(new InetSocketAddress(address, 50001),2000);
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001),ApplicationConstants.SERVER_TIMEOUT_MS);
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
 
                 JSONObject jsonMessage = new JSONObject();
@@ -596,11 +600,13 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         return false;
     }
 
+    //build request url for getting a path between the given coordinates
     private String buildRequestURL(LatLng start, LatLng dest){
         String origin = "origin=" + start.latitude + "," + start.longitude;
         String destination = "destination=" + dest.latitude + "," + dest.longitude;
         String sensor = "sensor=false";
-        String parameters = origin + "&" + destination + "&" + sensor;
+        String mode = "mode=walking";
+        String parameters = origin + "&" + destination + "&" + sensor + "&" + mode;
         return "https://maps.googleapis.com/maps/api/directions/json?" + parameters;
     }
 
@@ -690,8 +696,8 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                     points.add(position);
                 }
                 polylineOptions.addAll(points);
-                polylineOptions.width(5);
-                polylineOptions.color(Color.BLUE);
+                polylineOptions.width(27);
+                polylineOptions.color(Color.parseColor("#E5D433"));
                 if (destinationRoute != null){
                     destinationRoute.remove();
                 }
@@ -884,7 +890,6 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             }
         }
 
-        //TODO fix parser for locations
         @Override
         protected void onPostExecute(List<Person> persons) {
             checkSessionResponse(response);
@@ -898,6 +903,7 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
                 addedFriends = persons;
                 friendLocations = persons;
                 ((FriendListAdapter) friendList.getAdapter()).refresh((ArrayList<Person>) persons);
+                updateCache((ArrayList<Person>) persons);
             }
         }
     }
@@ -951,15 +957,18 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             }
 
             //Add list of pending requests from server, replace duplicates
-            for (Person prsn1 : persons){
+            /*for (Person prsn1 : persons){
                 for (Person prsn2 : pendingRequests){
                     if (prsn1.samePerson(prsn2)){
                         pendingRequests.remove(prsn2);
                     }
                 }
                 pendingRequests.add(prsn1);
-            }
+            }*/
+            pendingRequests.clear();
+            pendingRequests.addAll(persons);
             ((RequestListAdapter) friendRequestList.getAdapter()).refresh((ArrayList<Person>) pendingRequests);
+            updateCache((ArrayList<Person>) pendingRequests, (ArrayAdapter) friendRequestList.getAdapter());
         }
     }
 
@@ -973,8 +982,8 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             try{
                 InetAddress address = InetAddress.getByName("csclserver.hopto.org");
                 mySocket = new Socket();
-                mySocket.setSoTimeout(2000);
-                mySocket.connect(new InetSocketAddress(address, 50001),2000);
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001),ApplicationConstants.SERVER_TIMEOUT_MS);
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
 
@@ -1008,16 +1017,15 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
         @Override
         protected void onPostExecute(List<Person> persons) {
             checkSessionResponse(response);
-            Log.d("DEBUG", "onPostExecute: size = " + persons.size());
 
             if (persons == null || persons.size() == 0){
                 searchResult.clear();
                 ((SearchListAdapter) searchResultList.getAdapter()).refresh((ArrayList<Person>) searchResult);
             }
             else{
-
                 searchResult.clear();
                 searchResult.addAll(persons);
+                updateCache((ArrayList<Person>) searchResult, (ArrayAdapter) searchResultList.getAdapter());
                 ((SearchListAdapter) searchResultList.getAdapter()).refresh((ArrayList<Person>) searchResult);
             }
         }
@@ -1034,8 +1042,8 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             try{
                 InetAddress address = InetAddress.getByName("csclserver.hopto.org");
                 mySocket = new Socket();
-                mySocket.setSoTimeout(2000);
-                mySocket.connect(new InetSocketAddress(address, 50001),2000);
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001),ApplicationConstants.SERVER_TIMEOUT_MS);
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
 
@@ -1093,6 +1101,116 @@ public class Map extends AppCompatActivity implements OnMapReadyCallback, OnClic
             }*/
         }
     }
+
+    private void updateCache(ArrayList<Person> people){
+        if (people == null || people.size() == 0){
+            return;
+        }
+        ArrayList<Integer> uncached = new ArrayList<>();
+        for (Person person : people){
+            int accountID = Integer.parseInt(person.getDeviceID());
+            if (imageThumbnailCache.get(accountID, null) == null){
+                uncached.add(accountID);
+            }
+        }
+        new GetImageThumbnails(uncached).execute();
+    }
+
+    private void updateCache(ArrayList<Person> people, ArrayAdapter toUpdate){
+        if (people == null || people.size() == 0){
+            return;
+        }
+        ArrayList<Integer> uncached = new ArrayList<>();
+        for (Person person : people){
+            int accountID = Integer.parseInt(person.getDeviceID());
+            if (imageThumbnailCache.get(accountID, null) == null){
+                uncached.add(accountID);
+            }
+        }
+        new GetImageThumbnails(uncached).execute(toUpdate);
+    }
+
+
+    private class GetImageThumbnails extends AsyncTask<ArrayAdapter, Void, SparseArray<Bitmap>>{
+        private JSONObject response;
+        private ArrayList<Integer> requestedIDs;
+        private ArrayAdapter[] toNotify;
+        public GetImageThumbnails(ArrayList<Integer> ids){
+            requestedIDs = ids;
+        }
+
+        @Override
+        protected SparseArray<Bitmap> doInBackground(ArrayAdapter... params) {
+            Socket mySocket;
+            SparseArray<Bitmap> retval = new SparseArray<>();
+            toNotify = params;
+            try{
+                InetAddress address = InetAddress.getByName("csclserver.hopto.org");
+                mySocket = new Socket();
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001),ApplicationConstants.SERVER_TIMEOUT_MS);
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+                PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
+
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("type", NetworkConstants.TYPE_GET_IMAGES);
+                jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
+                JSONArray requested = new JSONArray();
+                for (Integer accountID : requestedIDs){
+                    JSONObject requestRow = new JSONObject();
+                    requestRow.put("deviceID", accountID);
+                    requestRow.put("size", "small");
+                    requested.put(requestRow);
+                }
+                jsonMessage.put("requested", requested);
+                printWriter.println(jsonMessage);
+                String unparsed = bufferedReader.readLine();
+                mySocket.close();
+
+                response = new JSONObject(unparsed);
+                JSONArray people = response.getJSONArray("images");
+                Log.d("DEBUG", "doInBackground: images: " + response.toString(3));
+                for (int i = 0; i < people.length(); i++) {
+                    JSONObject person = people.getJSONObject(i);
+                    int accountID = person.getInt("deviceID");
+                    String imageData = person.getString("image");
+                    if (imageData.equalsIgnoreCase("null")){
+                        retval.put(accountID, null);
+                    }
+                    else{
+                        retval.put(accountID, Profile.decodeBase64(imageData));
+                    }
+                }
+            }
+            catch (JSONException e){
+                e.printStackTrace();
+            }
+            catch (UnknownHostException e){
+                e.printStackTrace();
+            }
+            catch (IOException e){
+                e.printStackTrace();
+            }
+            finally {
+                Log.d("DEBUG", "END GET IMAGES TASK");
+                return retval;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(SparseArray<Bitmap> bitmapSparseArray) {
+            checkSessionResponse(response);
+
+            //update local thumbnail cache
+            for (int i = 0; i < bitmapSparseArray.size(); i++) {
+                imageThumbnailCache.put(bitmapSparseArray.keyAt(i), bitmapSparseArray.valueAt(i));
+            }
+            for (ArrayAdapter adapter : toNotify){
+                adapter.notifyDataSetChanged();
+            }
+        }
+    }
+
 
     public void checkSessionResponse(JSONObject serverMessage){
         if (serverMessage!= null){

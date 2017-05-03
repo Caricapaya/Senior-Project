@@ -1,9 +1,11 @@
 package com.example.christopher.myapplication;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,15 +22,17 @@ import java.util.ArrayList;
 public class FriendListAdapter extends ArrayAdapter {
     private Context context;
     private ArrayList<Person> friends;
+    private SparseArray<Bitmap> imageCache;
 
     private LayoutInflater myInflater;
     private boolean mNotifyOnChange = true;
 
-    public FriendListAdapter(Context cntxt, ArrayList<Person> frnds){
+    public FriendListAdapter(Context cntxt, ArrayList<Person> frnds, SparseArray<Bitmap> cache){
         super(cntxt, R.layout.friend_box);
         context = cntxt;
         myInflater = LayoutInflater.from(context);
         friends = frnds;
+        imageCache = cache;
     }
 
     @Override
@@ -94,6 +98,11 @@ public class FriendListAdapter extends ArrayAdapter {
         else{
             myHolder.onlineStatus.setColorFilter(Color.parseColor(Map.ONLINE_RED));
         }
+        //update image if in cache
+        Bitmap image = imageCache.get(Integer.parseInt(myHolder.deviceID), null);
+        if (image != null){
+            myHolder.profilePicture.setImageBitmap(image);
+        }
         return convertView;
     }
 
@@ -122,4 +131,5 @@ public class FriendListAdapter extends ArrayAdapter {
         friends = people;
         notifyDataSetChanged();
     }
+
 }

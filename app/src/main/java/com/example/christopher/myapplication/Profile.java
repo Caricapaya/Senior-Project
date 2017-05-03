@@ -2,8 +2,10 @@ package com.example.christopher.myapplication;
 
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -11,11 +13,14 @@ import android.os.Bundle;
 // 액티비티간 이동
 import android.content.Intent;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.View;
 
 // Spinner 구현
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -177,12 +182,22 @@ public class Profile extends AppCompatActivity {
         radioGroupOccupation = (RadioGroup) findViewById(R.id.radioGroupOccupation);
 
         new getProfileInfoTask().execute("");
+        new GetProfileImage().execute();
     }
 
     // 이미지 업로드를 위한 노력4 열음
     // This is getting an image from the Gallery app
     public void onClick_upload_gallery (View v){
-        doTakeAlbumAction();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                    Profile.PICK_FROM_ALBUM);
+
+        } else {
+            // permission has been granted, continue as usual
+            doTakeAlbumAction();
+        }
     }
 
     // This is getting an image from the Camera app
@@ -190,11 +205,12 @@ public class Profile extends AppCompatActivity {
     public void onClick_upload_camera (View v){
         // Check permission for CAMERA
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
             // Check Permissions Now
             // Callback onRequestPermissionsResult interceptado na Activity MainActivity
             ActivityCompat.requestPermissions(this,
-                    new String[]{android.Manifest.permission.CAMERA},
+                    new String[]{android.Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE},
                     Profile.PICK_FROM_CAMERA);
 
             doTakePhotoAction();
@@ -205,6 +221,30 @@ public class Profile extends AppCompatActivity {
     }
     // 이미지 업로드를 위한 노력4 닫음
 
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case PICK_FROM_CAMERA:
+                if(grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    doTakePhotoAction();
+                }
+                else {
+                    finish();
+                }
+                break;
+            case PICK_FROM_ALBUM:
+                if(grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    doTakeAlbumAction();
+                }
+                else {
+                    finish();
+                }
+                break;
+            default:
+                super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        }
+    }
 
     //function that attempts to request a user profile update on server
     public void onClick_update (View v){
@@ -567,7 +607,6 @@ public class Profile extends AppCompatActivity {
      */
     private void doTakeAlbumAction()
     {
-        // 앨범 호출
         Intent intent = new Intent(Intent.ACTION_PICK);
         intent.setType(android.provider.MediaStore.Images.Media.CONTENT_TYPE);
         startActivityForResult(intent, PICK_FROM_ALBUM);
@@ -620,6 +659,7 @@ public class Profile extends AppCompatActivity {
                 {
                     Bitmap photo = extras.getParcelable("data");
                     mPhotoImageView.setImageBitmap(photo);
+                    new SendImageTask(photo).execute();
                 }
 
 
@@ -657,6 +697,16 @@ public class Profile extends AppCompatActivity {
                 // 좀더 합리적인 방법을 선택하자.
 
                 mImageCaptureUri = data.getData();
+                try {
+                    Bitmap image = MediaStore.Images.Media.getBitmap(this.getContentResolver(), mImageCaptureUri);
+                    mPhotoImageView.setImageBitmap(image);
+                    new SendImageTask(image).execute();
+                }
+                catch (IOException e){
+                    e.printStackTrace();
+                }
+
+                break;
             }
 
             case PICK_FROM_CAMERA:
@@ -664,7 +714,7 @@ public class Profile extends AppCompatActivity {
                 // 이미지를 가져온 이후의 리사이즈할 이미지 크기를 결정.
                 // 이후에 이미지 크롭 어플리케이션을 호출.
 
-                Intent intent = new Intent("com.android.camera.action.CROP");
+                /*Intent intent = new Intent("com.android.camera.action.CROP");
                 intent.setDataAndType(mImageCaptureUri, "image/*");
 
                 intent.putExtra("outputX", 200);
@@ -674,10 +724,159 @@ public class Profile extends AppCompatActivity {
                 intent.putExtra("scale", true);
                 intent.putExtra("return-data", true);
                 startActivityForResult(intent, CROP_FROM_CAMERA);
+*/
+
+                try {
+                    Bitmap image = MediaStore.Images.Media.getBitmap(this.getContentResolver(), mImageCaptureUri);
+                    mPhotoImageView.setImageBitmap(image);
+                    new SendImageTask(image).execute();
+                }
+                catch (IOException e){
+                    e.printStackTrace();
+                }
 
                 break;
             }
         }
+    }
+
+    private class SendImageTask extends AsyncTask<Void, Void, Boolean>{
+        private JSONObject response;
+        private Bitmap image;
+
+        public SendImageTask(Bitmap img){
+            image = img;
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... params) {
+            SharedPreferences sessionInfo = getSharedPreferences("sessionInfo", 0);
+            Socket mySocket;
+            boolean success = false;
+            try{
+                //prepare socket IO
+                InetAddress address = InetAddress.getByName("csclserver.hopto.org");
+                mySocket = new Socket();
+                mySocket.setSoTimeout(10000);
+                mySocket.connect(new InetSocketAddress(address, 50001),10000);
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+                PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
+
+                //set request message
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("type", NetworkConstants.TYPE_UPLOAD_IMAGE);
+                jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
+                jsonMessage.put("image", encodeToBase64(image, Bitmap.CompressFormat.PNG, 100));
+
+                //send request
+                printWriter.println(jsonMessage);
+
+                //read response
+                String unparsed = bufferedReader.readLine();
+                mySocket.close();
+
+                //create jsonobject from response
+                response = new JSONObject(unparsed);
+                success = response.getBoolean("success");
+
+            }
+            catch (JSONException e){
+                e.printStackTrace();
+            }
+            catch (UnknownHostException e){
+                e.printStackTrace();
+            }
+            catch (IOException e){
+                e.printStackTrace();
+            }
+            finally {
+                return success;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Boolean aBoolean) {
+            checkSessionResponse(response);
+
+            if(aBoolean){
+                Toast.makeText(getApplicationContext(), "Profile picture updated!", Toast.LENGTH_SHORT);
+            }
+            else{
+                Toast.makeText(getApplicationContext(), "Error uploading picture..", Toast.LENGTH_SHORT);
+            }
+        }
+    }
+
+    private class GetProfileImage extends AsyncTask<Void, Void, Bitmap>{
+        private JSONObject response;
+        private ArrayList<Integer> requestedIDs;
+        private ArrayAdapter[] toNotify;
+
+        @Override
+        protected Bitmap doInBackground(Void... params) {
+            Socket mySocket;
+            Bitmap retval = null;
+            try{
+                InetAddress address = InetAddress.getByName("csclserver.hopto.org");
+                mySocket = new Socket();
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001),ApplicationConstants.SERVER_TIMEOUT_MS);
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+                PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
+
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("type", NetworkConstants.TYPE_GET_IMAGES);
+                jsonMessage.put("sessionid", sessionInfo.getString("sessionid", ""));
+                JSONArray requested = new JSONArray();
+                JSONObject jsonRequest = new JSONObject();
+                jsonRequest.put("size", "medium");
+                jsonRequest.put("sessionid", sessionInfo.getString("sessionid", ""));
+                jsonRequest.put("from sessionid", true);
+                requested.put(jsonRequest);
+                jsonMessage.put("requested", requested);
+                printWriter.println(jsonMessage);
+                String unparsed = bufferedReader.readLine();
+                mySocket.close();
+
+                response = new JSONObject(unparsed);
+                JSONObject person = response.getJSONArray("images").getJSONObject(0);
+                retval = decodeBase64(person.getString("image"));
+            }
+            catch (JSONException e){
+                e.printStackTrace();
+            }
+            catch (UnknownHostException e){
+                e.printStackTrace();
+            }
+            catch (IOException e){
+                e.printStackTrace();
+            }
+            finally {
+                return retval;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmapSparseArray) {
+            checkSessionResponse(response);
+
+            mPhotoImageView.setImageBitmap(bitmapSparseArray);
+        }
+    }
+
+
+    //http://stackoverflow.com/questions/9768611/encode-and-decode-bitmap-object-in-base64-string-in-android
+    public static String encodeToBase64(Bitmap image, Bitmap.CompressFormat compressFormat, int quality)
+    {
+        ByteArrayOutputStream byteArrayOS = new ByteArrayOutputStream();
+        image.compress(compressFormat, quality, byteArrayOS);
+        return Base64.encodeToString(byteArrayOS.toByteArray(), Base64.DEFAULT);
+    }
+
+    public static Bitmap decodeBase64(String input)
+    {
+        byte[] decodedBytes = Base64.decode(input, 0);
+        return BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
     }
     // 이미지 업로드를 위한 노력5 닫음
 }

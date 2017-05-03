@@ -207,18 +207,20 @@ public class Login extends AppCompatActivity {
     private class loginTask extends AsyncTask<String, Integer, JSONObject>{
         Boolean cannotConnect = false;
         Boolean jsonError = false;
+        String user;
+        String pass;
         @Override
         protected JSONObject doInBackground(String... params) {
-            String user = params[0];
-            String pass = params[1];
+            user = params[0];
+            pass = params[1];
             JSONObject response = null;
             try{
                 String sessionID = sessionInfo.getString("sessionid", "");
 
                 InetAddress address = java.net.InetAddress.getByName("csclserver.hopto.org");
                 Socket mySocket = new Socket();
-                mySocket.setSoTimeout(500);
-                mySocket.connect(new InetSocketAddress(address, 50001), 500);
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001), ApplicationConstants.SERVER_TIMEOUT_MS);
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
                 JSONObject jsonMessage = new JSONObject();
@@ -275,6 +277,10 @@ public class Login extends AppCompatActivity {
                     sessionEditor.putString("middlename", jsonObject.getString("middlename"));
                     sessionEditor.putString("lastname", jsonObject.getString("lastname"));
                     sessionEditor.commit();
+                    editor.putString("ID", user);
+                    editor.putString("PW", pass);
+                    editor.putBoolean("Auto_Login_enabled", true);
+                    editor.commit();
                     startActivity(intent_toRegister);
                 }
 

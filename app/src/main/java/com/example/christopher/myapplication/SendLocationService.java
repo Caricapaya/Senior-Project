@@ -51,7 +51,7 @@ public class SendLocationService extends Service {
             listener = new MyLocationListener();
             Criteria criteria = new Criteria();
             String bestProvider = locationManager.getBestProvider(criteria, true);
-            locationManager.requestLocationUpdates(bestProvider, 10000, 0, listener);
+            locationManager.requestLocationUpdates(bestProvider, ApplicationConstants.SEND_LOCATION_FREQUENCY_MS, 0, listener);
         }
         catch (SecurityException e){
             e.printStackTrace();
@@ -116,8 +116,8 @@ public class SendLocationService extends Service {
                 Log.d("DEBUG", "START SEND LOCATION TASK");
                 InetAddress address = InetAddress.getByName("csclserver.hopto.org");
                 Socket mySocket = new Socket();
-                mySocket.setSoTimeout(2000);
-                mySocket.connect(new InetSocketAddress(address, 50001), 2000);
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001), ApplicationConstants.SERVER_TIMEOUT_MS);
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
                 JSONObject jsonMessage = new JSONObject();

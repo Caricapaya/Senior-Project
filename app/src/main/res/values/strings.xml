@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">UND Friend Finder</string>
 
-    <color name="background_login">#006600</color> <!-- 로그인 배경색 때문 -->
+    <color name="background_login">#309630</color> <!-- 로그인 배경색 때문 -->
     <color name="background_register">#3F51B5</color> <!-- sign in 배경색 -->
 </resources>

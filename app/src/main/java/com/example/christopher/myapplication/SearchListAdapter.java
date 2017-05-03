@@ -1,11 +1,13 @@
 package com.example.christopher.myapplication;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,6 +39,7 @@ public class SearchListAdapter extends ArrayAdapter {
     private Context context;
     private ArrayList<Person> searchResult;
     private Map mapActivity;
+    private SparseArray<Bitmap> imageCache;
 
     private LayoutInflater myInflater;
     private boolean mNotifyOnChange = true;
@@ -48,12 +51,13 @@ public class SearchListAdapter extends ArrayAdapter {
         searchResult = srchRslt;
     }
 
-    public SearchListAdapter(Context cntxt, ArrayList<Person> srchRslt, Map map){
+    public SearchListAdapter(Context cntxt, ArrayList<Person> srchRslt, Map map, SparseArray<Bitmap> cache){
         super(cntxt, R.layout.friend_search_box);
         context = cntxt;
         myInflater = LayoutInflater.from(context);
         searchResult = srchRslt;
         mapActivity = map;
+        imageCache = cache;
     }
 
     @Override
@@ -119,6 +123,11 @@ public class SearchListAdapter extends ArrayAdapter {
         myHolder.nameBox.setText(searchResult.get(position).getName());
         myHolder.deviceID = searchResult.get(position).getDeviceID();
         myHolder.pos = position;
+
+        Bitmap image = imageCache.get(Integer.parseInt(myHolder.deviceID), null);
+        if (image != null){
+            myHolder.profilePicture.setImageBitmap(image);
+        }
         return convertView;
     }
 
@@ -142,8 +151,8 @@ public class SearchListAdapter extends ArrayAdapter {
             try{
                 InetAddress address = InetAddress.getByName("csclserver.hopto.org");
                 mySocket = new Socket();
-                mySocket.setSoTimeout(2000);
-                mySocket.connect(new InetSocketAddress(address, 50001),2000);
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001),ApplicationConstants.SERVER_TIMEOUT_MS);
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
 

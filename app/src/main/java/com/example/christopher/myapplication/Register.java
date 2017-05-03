@@ -91,34 +91,37 @@ public class Register extends AppCompatActivity {
 
     // Just for testing Next button
     public void onClick_next (View v){
-        Intent intent_toRegister2 = new Intent(getApplicationContext(), Register2.class);
-        startActivity(intent_toRegister2);
+        //Intent intent_toRegister2 = new Intent(getApplicationContext(), Register2.class);
+        //startActivity(intent_toRegister2);
+        new RegisterTask().execute(input_ID.getText().toString(), input_PW.getText().toString());
     }
 
     private class RegisterTask extends AsyncTask<String, Integer, JSONObject>{
         boolean cannotConnect = false;
         boolean jsonError = false;
+        String user;
+        String pass;
 
         @Override
         protected JSONObject doInBackground(String... params) {
-            String user = params[0];
-            String pass = params[1];
-            String gender = params[2];
-            String status = params[3];
+            user = params[0];
+            pass = params[1];
+            //String gender = params[2];
+            //String status = params[3];
             JSONObject response = null;
             try{
                 InetAddress address = java.net.InetAddress.getByName("csclserver.hopto.org");
                 Socket mySocket = new Socket();
-                mySocket.setSoTimeout(500);
-                mySocket.connect(new InetSocketAddress(address, 50001), 500);
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001), ApplicationConstants.SERVER_TIMEOUT_MS);
                 PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
                 JSONObject jsonMessage = new JSONObject();
                 jsonMessage.put("type", NetworkConstants.TYPE_SIGNUP);
                 jsonMessage.put("username", user);
                 jsonMessage.put("password", pass);
-                jsonMessage.put("gender", gender);
-                jsonMessage.put("occupation", status);
+                //jsonMessage.put("gender", gender);
+                //jsonMessage.put("occupation", status);
                 printWriter.println(jsonMessage.toString());
                 String serverResponse = bufferedReader.readLine();
                 response = new JSONObject(serverResponse);
@@ -160,13 +163,104 @@ public class Register extends AppCompatActivity {
                     Toast.makeText(getApplicationContext(), "New user created!", Toast.LENGTH_SHORT).show();
                 }
                 editor.commit();
-                Intent intent_toLogin = new Intent(getApplicationContext(), Login.class);
-                startActivity(intent_toLogin);
+                //Intent intent_toRegister2 = new Intent(getApplicationContext(), Register2.class);
+                //startActivity(intent_toRegister2);
+                new loginTask().execute(user, pass);
 
             }
             catch (JSONException e){
                 e.printStackTrace();
             }
+        }
+    }
+
+    private class loginTask extends AsyncTask<String, Integer, JSONObject>{
+        SharedPreferences sessionInfo = getSharedPreferences("sessionInfo", 0);
+        Boolean cannotConnect = false;
+        Boolean jsonError = false;
+        String user;
+        String pass;
+        @Override
+        protected JSONObject doInBackground(String... params) {
+            user = params[0];
+            pass = params[1];
+            JSONObject response = null;
+            try{
+                String sessionID = sessionInfo.getString("sessionid", "");
+
+                InetAddress address = java.net.InetAddress.getByName("csclserver.hopto.org");
+                Socket mySocket = new Socket();
+                mySocket.setSoTimeout(ApplicationConstants.SERVER_TIMEOUT_MS);
+                mySocket.connect(new InetSocketAddress(address, 50001), ApplicationConstants.SERVER_TIMEOUT_MS);
+                PrintWriter printWriter = new PrintWriter(mySocket.getOutputStream(), true);
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(mySocket.getInputStream()));
+                JSONObject jsonMessage = new JSONObject();
+                jsonMessage.put("type", NetworkConstants.TYPE_LOGIN);
+                jsonMessage.put("username", user);
+                jsonMessage.put("password", pass);
+                jsonMessage.put("sessionid", sessionID);
+                printWriter.println(jsonMessage.toString());
+                String serverResponse = bufferedReader.readLine();
+                response = new JSONObject(serverResponse);
+                mySocket.close();
+            }
+            catch (UnknownHostException e){
+                e.printStackTrace();
+                cannotConnect = true;
+            }
+            catch (IOException e){
+                e.printStackTrace();
+                cannotConnect = true;
+            }
+            catch (JSONException e){
+                e.printStackTrace();
+                jsonError = true;
+            }
+            finally {
+                return response;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(JSONObject jsonObject) {
+
+            if (cannotConnect){
+                Toast.makeText(getApplicationContext(), "Cannot connect to server", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (jsonError){
+                Toast.makeText(getApplicationContext(), "Unexpected error", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            try{
+                if (!jsonObject.getString("type").equals(NetworkConstants.TYPE_LOGIN)){ //Server will send a jsonobject with type = DEFAULT if request can't be handled
+                    Toast.makeText(getApplicationContext(), "An error has occurred", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (!jsonObject.getBoolean("loginSuccessful")){
+                    Toast.makeText(getApplicationContext(), "username or password is incorrect", Toast.LENGTH_SHORT).show();
+                }
+                else{
+                    Toast.makeText(getApplicationContext(), "login successful!", Toast.LENGTH_SHORT).show();
+                    Intent intent_toRegister = new Intent(getApplicationContext(), Register2.class);
+                    SharedPreferences.Editor sessionEditor = sessionInfo.edit();
+                    sessionEditor.putString("sessionid", jsonObject.getString("sessionid"));
+                    sessionEditor.putString("firstname", jsonObject.getString("firstname"));
+                    sessionEditor.putString("middlename", jsonObject.getString("middlename"));
+                    sessionEditor.putString("lastname", jsonObject.getString("lastname"));
+                    sessionEditor.commit();
+                    editor.putString("ID", user);
+                    editor.putString("PW", pass);
+                    editor.putBoolean("Auto_Login_enabled", true);
+                    editor.commit();
+                    startActivity(intent_toRegister);
+                }
+
+            }
+            catch (JSONException e){
+                e.printStackTrace();
+            }
+
         }
     }
 

@@ -34,6 +34,7 @@ import javax.net.ssl.X509TrustManager;
  * Created by Christopher on 10/21/2016.
  */
 
+//Deprecated
 public class NetworkIO extends Thread {
     public Handler IOHandler;
     private Handler responseHandler;

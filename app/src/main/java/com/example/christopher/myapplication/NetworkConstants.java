@@ -18,4 +18,7 @@ public class NetworkConstants {
     public static final String TYPE_GET_FRIENDS = "GET_FRIENDS";
     public static final String TYPE_UPDATE_PROFILE = "UPDATE_PROFILE";
     public static final String TYPE_GET_PROFILE = "GET_PROFILE";
+    public static final String TYPE_UPLOAD_IMAGE = "UPLOAD_IMAGE";
+    public static final String TYPE_GET_IMAGES = "GET_IMAGES";
+
 }

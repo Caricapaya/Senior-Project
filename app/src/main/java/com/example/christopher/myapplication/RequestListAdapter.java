@@ -2,10 +2,12 @@ package com.example.christopher.myapplication;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,6 +39,7 @@ public class RequestListAdapter extends ArrayAdapter {
     private Context context;
     private ArrayList<Person> pendingRequests;
     private Map mapActivity;
+    private SparseArray<Bitmap> imageCache;
 
     private LayoutInflater myInflater;
     private boolean mNotifyOnChange = true;
@@ -48,12 +51,13 @@ public class RequestListAdapter extends ArrayAdapter {
         myInflater = LayoutInflater.from(cntxt);
     }
 
-    public RequestListAdapter(Context cntxt, ArrayList<Person> requests, Map map){
+    public RequestListAdapter(Context cntxt, ArrayList<Person> requests, Map map, SparseArray<Bitmap> cache){
         super(cntxt, R.layout.friend_request_box);
         context = cntxt;
         pendingRequests = requests;
         myInflater = LayoutInflater.from(cntxt);
         mapActivity = map;
+        imageCache = cache;
     }
 
     @Override
@@ -125,6 +129,10 @@ public class RequestListAdapter extends ArrayAdapter {
         }
         myHolder.deviceID = pendingRequests.get(position).getDeviceID();
         myHolder.pos = position;
+        Bitmap image = imageCache.get(Integer.parseInt(myHolder.deviceID), null);
+        if (image != null){
+            myHolder.profilePicture.setImageBitmap(image);
+        }
         return convertView;
     }
 

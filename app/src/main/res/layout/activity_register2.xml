@@ -63,7 +63,7 @@
                 android:hint="Enter your first name"
                 android:textSize="12sp"
                 android:ems="10"
-                android:id="@+id/editFirstName" />
+                android:id="@+id/register2_editFirstName" />
 
         </LinearLayout>
 
@@ -90,7 +90,7 @@
                 android:hint="Enter your middle name"
                 android:textSize="12sp"
                 android:ems="10"
-                android:id="@+id/editMiddleName" />
+                android:id="@+id/register2_editMiddleName" />
 
         </LinearLayout>
 
@@ -117,7 +117,7 @@
                 android:hint="Enter your last name"
                 android:textSize="12sp"
                 android:ems="10"
-                android:id="@+id/editLastName" />
+                android:id="@+id/register2_editLastName" />
 
         </LinearLayout>
 
@@ -149,6 +149,7 @@
                 android:textSize="12sp" />
 
             <RadioGroup xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/register2_radiogroup_gender"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="5dp"
@@ -199,16 +200,17 @@
                 android:textSize="12sp" />
 
             <RadioGroup xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/register2_radiogroup_occupation"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
                 <RadioButton
-                    android:text="Professor"
+                    android:id="@+id/radioButtonProfessor"
                     android:layout_width="85dp"
                     android:layout_height="wrap_content"
-                    android:id="@+id/radioButtonProfessor"
                     android:checked="false"
+                    android:text="Professor"
                     android:textSize="12sp" />
 
                 <RadioButton
@@ -218,13 +220,14 @@
                     android:id="@+id/radioButtonStudent"
                     android:fontFamily="sans-serif"
                     android:textSize="12sp" />
+
                 <RadioButton
-                    android:text="Other"
+                    android:id="@+id/radioButtonOther"
                     android:layout_width="75dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:id="@+id/radioButtonOther"
                     android:fontFamily="sans-serif"
+                    android:text="Other"
                     android:textSize="12sp" />
             </RadioGroup>
         </LinearLayout>
@@ -241,15 +244,15 @@
             android:gravity="left"
             android:layout_weight="0.08">
             <TextView
-                android:text="Age"
-                android:layout_width="40dp"
+                android:text="Year of birth"
+                android:layout_width="120dp"
                 android:layout_height="wrap_content"
                 android:id="@+id/textAge"
                 android:fontFamily="sans-serif-smallcaps"
                 android:textStyle="normal|bold"
                 android:textSize="12sp" />
             <Spinner
-                android:id="@+id/spinner_age"
+                android:id="@+id/register2_spinner_age"
                 android:layout_marginTop="1dp"
                 android:layout_marginStart="10dp"
                 android:layout_width="140dp"
